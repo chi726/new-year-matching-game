@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Gift, ChevronRight, Trophy, AlertCircle, Sparkles, Settings, Users, Trash2, Lock, Unlock
-} from 'lucide-react';
+  Gift, ChevronRight, Trophy, AlertCircle, Settings, Users, Trash2, Lock, Unlock
+} from 'lucide-react'; // 修正：移除了未使用的 Sparkles
 import { initializeApp } from 'firebase/app';
 import { 
   getFirestore, collection, doc, setDoc, 
@@ -20,6 +20,7 @@ const firebaseConfig = {
   appId: "1:492060979940:web:5f43198bd8de721182f2f1",
   measurementId: "G-YV7SYMEHRX"
 };
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -27,7 +28,7 @@ const appId = 'red-envelope-app';
 
 // --- 遊戲常數 ---
 const TOTAL_ENVELOPES = 24;
-const ADMIN_PASSWORD = "2025"; // 您可以在這裡修改管理員密碼
+const ADMIN_PASSWORD = "2026"; // 您可以在這裡修改管理員密碼
 
 const App = () => {
   const [user, setUser] = useState(null);
