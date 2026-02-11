@@ -127,18 +127,15 @@ const App = () => {
     setView('picking');
   };
 
-  // 當使用者選取紅包時，立即決定一個初始金額
   const handlePick = async (index) => {
     if (!user || participants.some(p => p.envelopeIndex === index)) return;
     try {
-      // 隨機生成一個 100 為單位的初始金額 (例如 500 ~ 3000)
       const initialValue = (Math.floor(Math.random() * 26) + 5) * 100;
-
       await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'participants'), {
         name: currentNickname.trim(),
         envelopeIndex: index,
         uid: user.uid,
-        value: initialValue, // 金額現在先出來了！
+        value: initialValue,
         timestamp: Date.now()
       });
       setView('results');
@@ -177,7 +174,6 @@ const App = () => {
 
       for (let i = 0; i < shuffled.length; i += 2) {
         if (i + 1 < shuffled.length) {
-          // 重新計算配對金額，確保總和為 R
           const maxUnits = target / 100;
           const kUnits = Math.floor(Math.random() * (maxUnits - 1)) + 1; 
           const val1 = kUnits * 100;
@@ -193,8 +189,7 @@ const App = () => {
         }
       }
       await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'), { 
-        status: 'finished', 
-        showAllResults: false 
+        status: 'finished'
       });
       setError('');
     } catch (err) {
@@ -252,13 +247,21 @@ const App = () => {
         >
           {/* 內容物 (鈔票與硬幣) */}
           <div className={`absolute inset-x-2 transition-all duration-700 flex flex-col items-center ${isRevealed ? '-translate-y-24 opacity-100 scale-110' : 'translate-y-0 opacity-0'}`}>
-            <div className="flex flex-wrap justify-center gap-1 mb-3 max-w-[140px]">
-              {cashItems.map((item, i) => <CashIcon key={i} item={item} />)}
-              {pData.value === '福' && <div className="text-5xl">🧧</div>}
-            </div>
-            <div className="bg-white px-4 py-1 rounded-full shadow-xl border-2 border-red-50 font-black text-red-600 whitespace-nowrap text-base shadow-red-200/50">
-              {pData.value === '福' ? '大吉大利' : `$${pData.value}`}
-            </div>
+            {pData.value ? (
+              <>
+                <div className="flex flex-wrap justify-center gap-1 mb-3 max-w-[140px]">
+                  {cashItems.map((item, i) => <CashIcon key={i} item={item} />)}
+                  {pData.value === '福' && <div className="text-5xl">🧧</div>}
+                </div>
+                <div className="bg-white px-4 py-1 rounded-full shadow-xl border-2 border-red-50 font-black text-red-600 whitespace-nowrap text-base shadow-red-200/50">
+                  {pData.value === '福' ? '大吉大利' : `$${pData.value}`}
+                </div>
+              </>
+            ) : (
+              <div className="bg-white/90 px-4 py-2 rounded-2xl shadow-lg border border-red-200 text-red-400 font-bold text-xs animate-pulse">
+                等待開獎中...
+              </div>
+            )}
           </div>
 
           {/* 紅包本體 */}
@@ -303,6 +306,7 @@ const App = () => {
           <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl text-center border-t-8 border-red-600 mt-4 animate-in fade-in zoom-in duration-500">
             <div className="text-8xl mb-8">🧧</div>
             <h2 className="text-2xl font-black text-red-900 mb-2">新年大吉！緣分紅包</h2>
+            <p className="text-slate-500 text-sm mb-10">輸入暱稱，開啟新春好運</p>
             <form onSubmit={handleJoin} className="space-y-6">
               <input type="text" value={currentNickname} onChange={(e) => setCurrentNickname(e.target.value)} placeholder="輸入您的暱稱" className="w-full p-5 bg-orange-50 border-2 border-red-50 rounded-[1.5rem] text-center text-xl font-black outline-none focus:border-red-500 focus:bg-white shadow-inner" />
               <button className="w-full bg-red-600 text-white font-black py-5 rounded-[1.5rem] shadow-xl hover:bg-red-700 active:scale-95 flex items-center justify-center gap-3 text-lg">開始挑選 <ChevronRight size={24}/></button>
@@ -385,7 +389,7 @@ const App = () => {
             </div>
 
             <div className="space-y-40">
-              {/* 【個人專屬紅包區】：選完就顯示，點擊即見錢 */}
+              {/* 【個人專屬紅包區】：增加 pt-32 以解決重疊問題 */}
               {(() => {
                 const myResult = finalPairs.find(p => p.p1.uid === user?.uid || (p.isPair && p.p2.uid === user?.uid));
                 const myEnrollment = participants.find(p => p.uid === user?.uid);
@@ -397,17 +401,16 @@ const App = () => {
                   </div>
                 );
 
-                // 金額現在會在選取時直接存入 participants，所以這裡直接抓取
                 const pData = myResult 
                   ? (myResult.p1.uid === user?.uid ? myResult.p1 : myResult.p2)
                   : myEnrollment;
 
                 return (
-                  <div className="flex flex-col items-center bg-white p-10 rounded-[3rem] shadow-2xl border-4 border-yellow-500/40 relative animate-in zoom-in duration-700 mb-12">
-                    <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-yellow-500 text-red-900 px-6 py-2 rounded-full text-sm font-black shadow-xl tracking-widest">您的專屬紅包</div>
+                  <div className="flex flex-col items-center bg-white pt-32 pb-10 px-10 rounded-[3rem] shadow-2xl border-4 border-yellow-500/40 relative animate-in zoom-in duration-700 mb-12">
+                    <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-yellow-500 text-red-900 px-6 py-2 rounded-full text-sm font-black shadow-xl tracking-widest z-50">您的專屬紅包</div>
                     <ResultEnvelope pData={pData} />
-                    <div className="mt-8 text-center bg-red-50 px-8 py-3 rounded-2xl border-2 border-red-100 w-full">
-                      <p className="text-red-400 text-xs font-black mb-1">配對組合</p>
+                    <div className="mt-12 text-center bg-red-50 px-8 py-4 rounded-2xl border-2 border-red-100 w-full">
+                      <p className="text-red-400 text-xs font-black mb-1 tracking-wider uppercase">您的配對組合</p>
                       <p className="font-black text-red-800 text-2xl tracking-widest">
                         {myResult ? (myResult.isPair ? `${myResult.p1.name} ❤️ ${myResult.p2.name}` : `${myResult.p1.name} (幸運獨贏)`) : "等待管理者匹配中..."}
                       </p>
@@ -416,18 +419,19 @@ const App = () => {
                 );
               })()}
 
-              {/* 【全體結果區】：超大間距 */}
-              {gameConfig.status === 'finished' && gameConfig.showAllResults ? (
+              {/* 【全體結果區】：即便管理者還沒按「生成配對」，但按了「顯示結果」，也會顯示名單 */}
+              {gameConfig.showAllResults ? (
                 <div className="animate-in fade-in slide-in-from-bottom-12 duration-1000">
                   <div className="flex items-center gap-6 mb-20">
                     <div className="h-px bg-red-200 flex-1 shadow-sm"></div>
-                    <span className="text-red-500 text-sm font-black tracking-[0.3em] uppercase">全體名單</span>
+                    <span className="text-red-500 text-sm font-black tracking-[0.3em] uppercase">全體名單已揭曉</span>
                     <div className="h-px bg-red-200 flex-1 shadow-sm"></div>
                   </div>
                   
-                  <div className="space-y-[20rem]"> {/* 超大幅增加上下間距 */}
-                    {finalPairs.map((pair, idx) => (
-                      <div key={idx} className="bg-white/70 backdrop-blur-md rounded-[3rem] p-12 border-2 border-red-50 shadow-lg transition-all">
+                  <div className="space-y-[25rem]"> {/* 超大幅增加上下間距 */}
+                    {finalPairs.length > 0 ? finalPairs.map((pair, idx) => (
+                      <div key={idx} className="bg-white/70 backdrop-blur-md rounded-[3rem] pt-32 pb-10 px-12 border-2 border-red-50 shadow-lg transition-all relative">
+                        <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-red-600 text-white px-6 py-1 rounded-full text-[10px] font-black shadow-md z-40">配對組合 #{idx+1}</div>
                         {pair.isPair ? (
                           <div className="flex flex-col gap-24">
                             <div className="grid grid-cols-2 gap-12 relative">
@@ -448,13 +452,18 @@ const App = () => {
                           </div>
                         )}
                       </div>
-                    ))}
+                    )) : (
+                      <div className="text-center py-20 bg-white/40 rounded-3xl border-2 border-dashed border-red-200">
+                        <p className="text-red-300 font-bold">管理者尚未生成最終配對資料</p>
+                      </div>
+                    )}
                   </div>
                 </div>
-              ) : gameConfig.status === 'finished' && (
+              ) : (
                 <div className="text-center p-16 bg-white/40 rounded-[3rem] border-4 border-dotted border-red-200 shadow-inner">
                   <Eye size={48} className="mx-auto text-red-200 mb-6" />
                   <p className="text-red-300 font-black text-lg tracking-widest">全體配對結果尚未公開</p>
+                  <p className="text-xs text-red-200 mt-2 font-bold italic">請靜候管理者按下公佈按鈕！</p>
                 </div>
               )}
             </div>
