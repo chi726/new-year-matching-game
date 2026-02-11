@@ -421,7 +421,7 @@ const App = () => {
                             <div className="grid grid-cols-2 gap-6 relative">
                               <ResultEnvelope pData={pair.p1} />
                               <ResultEnvelope pData={pair.p2} />
-                              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-6xl animate-pulse filter drop-shadow-2xl">❤️</div>
+                              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-6xl animate-pulse filter drop-shadow-2xl">&</div>
                             </div>
                             <div className="text-center font-black text-red-900 text-2xl md:text-3xl bg-gradient-to-r from-red-50 to-red-100 py-8 rounded-[2.5rem] border-2 border-red-200 shadow-inner">
                               {pair.p1.name} & {pair.p2.name}
