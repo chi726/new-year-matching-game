@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Gift, ChevronRight, Trophy, AlertCircle, Settings, Users, Trash2, Lock, Eye, EyeOff, RotateCcw
-} from 'lucide-react'; // 修正：移除了未使用的 Unlock
+} from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { 
   getFirestore, collection, doc, setDoc, 
@@ -10,7 +10,6 @@ import {
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 
 // --- Firebase 配置 ---
-// 請務必填入您在 Firebase Console 取得的真實資訊
 const firebaseConfig = {
   apiKey: "AIzaSyDxRqhqlq0N-ABlE8LxPoP7a5YdHvDEqXQ",
   authDomain: "newyearmatchgame.firebaseapp.com",
@@ -24,11 +23,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-// 正式部署環境建議固定使用此 appId
 const appId = 'red-envelope-app'; 
 
-// --- 遊戲常數 ---
-const ADMIN_PASSWORD = "2025"; 
+const ADMIN_PASSWORD = "2026"; 
 
 const App = () => {
   const [user, setUser] = useState(null);
@@ -48,13 +45,12 @@ const App = () => {
   const [adminPasswordInput, setAdminPasswordInput] = useState('');
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
 
-  // 1. 初始化驗證
   useEffect(() => {
     const initAuth = async () => {
       try {
         await signInAnonymously(auth);
       } catch (err) {
-        setError('身份驗證失敗，請重新整理');
+        setError('身分驗證失敗，請檢查網路連線');
       }
     };
     initAuth();
@@ -62,15 +58,13 @@ const App = () => {
     return () => unsubscribe();
   }, []);
 
-  // 2. 監聽雲端資料
   useEffect(() => {
     if (!user) return;
 
     const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config');
     const unsubConfig = onSnapshot(configRef, (docSnap) => {
       if (docSnap.exists()) {
-        const data = docSnap.data();
-        setGameConfig(prev => ({ ...prev, ...data }));
+        setGameConfig(docSnap.data());
       } else {
         setDoc(configRef, { 
           targetSum: 6600, 
@@ -79,19 +73,17 @@ const App = () => {
           showAllResults: false 
         });
       }
-    }, (err) => setError('設定讀取失敗: ' + err.message));
+    });
 
     const partsRef = collection(db, 'artifacts', appId, 'public', 'data', 'participants');
     const unsubParts = onSnapshot(partsRef, (snapshot) => {
-      const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      setParticipants(list);
-    }, (err) => setError('參加者讀取失敗: ' + err.message));
+      setParticipants(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
 
     const pairsRef = collection(db, 'artifacts', appId, 'public', 'data', 'pairs');
     const unsubPairs = onSnapshot(pairsRef, (snapshot) => {
-      const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      setFinalPairs(list);
-    }, (err) => setError('配對結果讀取失敗: ' + err.message));
+      setFinalPairs(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
 
     return () => {
       unsubConfig();
@@ -100,7 +92,6 @@ const App = () => {
     };
   }, [user]);
 
-  // 紙鈔與硬幣組合邏輯
   const getCashDetails = (value) => {
     if (typeof value !== 'number') return [];
     let remaining = value;
@@ -128,7 +119,7 @@ const App = () => {
     e.preventDefault();
     if (!currentNickname.trim()) return;
     if (participants.some(p => p.name === currentNickname.trim())) {
-      setError('暱稱已被使用');
+      setError('此暱稱已被使用');
       return;
     }
     setError('');
@@ -146,7 +137,7 @@ const App = () => {
       });
       setView('results');
     } catch (err) {
-      setError('選擇失敗');
+      setError('選取紅包失敗');
     }
   };
 
@@ -159,7 +150,6 @@ const App = () => {
     });
   };
 
-  // 管理者：刪除參加者
   const deleteParticipant = async (pId) => {
     if (!window.confirm('確定要刪除這位參加者嗎？')) return;
     try {
@@ -169,7 +159,6 @@ const App = () => {
     }
   };
 
-  // 管理者：生成配對 (以 100 為單位)
   const handleMatch = async () => {
     if (!user || participants.length < 2) return;
     try {
@@ -185,7 +174,6 @@ const App = () => {
           const maxUnits = target / 100;
           const kUnits = Math.floor(Math.random() * (maxUnits - 1)) + 1; 
           const k = kUnits * 100;
-
           await addDoc(pairsColl, { 
             p1: { ...shuffled[i], value: k }, 
             p2: { ...shuffled[i+1], value: target - k }, 
@@ -195,17 +183,18 @@ const App = () => {
           await addDoc(pairsColl, { p1: { ...shuffled[i], value: '福' }, isPair: false });
         }
       }
-
-      const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config');
-      await updateDoc(configRef, { status: 'finished', showAllResults: false });
+      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'), { 
+        status: 'finished', 
+        showAllResults: false 
+      });
       setError('');
     } catch (err) {
-      setError('生成失敗');
+      setError('配對生成失敗');
     }
   };
 
   const resetGame = async () => {
-    if (!user || !window.confirm('確定要清除所有資料並重新開始嗎？')) return;
+    if (!user || !window.confirm('確定要重置遊戲並清除所有資料嗎？')) return;
     try {
       const partsColl = collection(db, 'artifacts', appId, 'public', 'data', 'participants');
       const parts = await getDocs(partsColl);
@@ -215,16 +204,16 @@ const App = () => {
       const pairs = await getDocs(pairsColl);
       await Promise.all(pairs.docs.map(d => deleteDoc(d.ref)));
 
-      const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config');
-      await updateDoc(configRef, { status: 'collecting', showAllResults: false });
+      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'), { 
+        status: 'collecting', 
+        showAllResults: false 
+      });
       setRevealedIds(new Set());
-      setError('遊戲已完全重置');
     } catch (err) {
       setError('重置失敗');
     }
   };
 
-  // --- UI 組件 ---
   const CashIcon = ({ item }) => {
     if (item.type === 'bill') {
       return (
@@ -245,29 +234,28 @@ const App = () => {
       disabled={isTaken} 
       onClick={() => onPick(index)} 
       className={`relative h-28 rounded-xl border-2 transition-all flex flex-col items-center justify-center overflow-hidden shadow-md active:scale-95 group
-        ${isMine ? 'bg-yellow-400 border-yellow-600 scale-105 z-10' : 
+        ${isMine ? 'bg-yellow-400 border-yellow-600 scale-105 z-10 shadow-lg' : 
           isTaken ? 'bg-gray-200 border-gray-300 opacity-40 grayscale' : 
           'bg-red-600 border-yellow-500 hover:scale-105 hover:shadow-xl'}`}
     >
       {!isTaken && <div className="absolute top-0 inset-x-0 h-6 bg-red-700 rounded-b-2xl border-b border-yellow-600/30"></div>}
       <span className={`text-[10px] ${isMine ? 'text-yellow-800' : 'text-yellow-200/50'}`}>No.</span>
       <span className={`text-2xl font-black ${isMine ? 'text-red-700' : 'text-yellow-400'}`}>{index + 1}</span>
-      {!isTaken && !isMine && <div className="mt-1 w-6 h-6 rounded-full bg-yellow-500 flex items-center justify-center text-[8px] text-red-800 border border-yellow-200 shadow-inner font-serif">福</div>}
+      {!isTaken && !isMine && <div className="mt-1 w-6 h-6 rounded-full bg-yellow-500 flex items-center justify-center text-[8px] text-red-800 border border-yellow-200 shadow-inner font-serif font-bold">福</div>}
     </button>
   );
 
   const ResultEnvelope = ({ pData, showName = true }) => {
-    const isRevealed = revealedIds.has(pData.id);
+    const isRevealed = revealedIds.has(pData.id || pData.uid);
     const cashItems = getCashDetails(pData.value);
 
     return (
       <div className="flex flex-col items-center w-full">
         <div 
-          onClick={() => toggleEnvelope(pData.id)}
+          onClick={() => toggleEnvelope(pData.id || pData.uid)}
           className="relative h-44 w-full max-w-[160px] cursor-pointer"
           style={{ perspective: '1000px' }}
         >
-          {/* 鈔票硬幣彈出層 */}
           <div className={`absolute inset-x-2 transition-all duration-700 flex flex-col items-center ${isRevealed ? '-translate-y-24 opacity-100 scale-110' : 'translate-y-0 opacity-0'}`}>
             <div className="flex flex-wrap justify-center gap-1 mb-3 max-w-[140px]">
               {cashItems.map((item, i) => <CashIcon key={i} item={item} />)}
@@ -278,7 +266,6 @@ const App = () => {
             </div>
           </div>
 
-          {/* 紅包主體 */}
           <div className={`absolute inset-0 bg-red-600 rounded-xl border-2 border-yellow-500 shadow-xl z-10 flex flex-col items-center justify-center transition-transform duration-500 ${isRevealed ? 'translate-y-8 opacity-90 scale-95' : ''}`}>
             <div className="absolute top-0 w-full h-1/4 bg-red-700 rounded-b-3xl border-b border-yellow-600/30"></div>
             <div className="text-yellow-400 font-bold text-2xl mb-1">{(Number(pData.envelopeIndex) || 0) + 1}</div>
@@ -323,7 +310,7 @@ const App = () => {
             <p className="text-slate-500 text-sm mb-10">輸入暱稱，開啟新春好運</p>
             <form onSubmit={handleJoin} className="space-y-6">
               <input type="text" value={currentNickname} onChange={(e) => setCurrentNickname(e.target.value)} placeholder="輸入您的暱稱" className="w-full p-5 bg-orange-50 border-2 border-red-50 rounded-[1.5rem] text-center text-xl font-black outline-none focus:border-red-500 focus:bg-white shadow-inner" />
-              <button className="w-full bg-red-600 text-white font-black py-5 rounded-[1.5rem] shadow-xl hover:bg-red-700 active:scale-95 transition-all flex items-center justify-center gap-3 text-lg">
+              <button className="w-full bg-red-600 text-white font-black py-5 rounded-[1.5rem] shadow-xl hover:bg-red-700 active:scale-95 flex items-center justify-center gap-3 text-lg">
                 開始挑選 <ChevronRight size={24}/>
               </button>
             </form>
@@ -331,10 +318,10 @@ const App = () => {
         )}
 
         {view === 'picking' && (
-          <div className="mt-4">
+          <div className="mt-4 animate-in slide-in-from-bottom-8 duration-500">
             <h3 className="text-center font-black text-red-800 text-xl mb-8">嗨 {currentNickname}，請挑一個好運位置</h3>
-            <div className="grid grid-cols-4 gap-4 animate-in slide-in-from-bottom-8 duration-500">
-              {Array.from({ length: gameConfig.totalEnvelopes }).map((_, i) => {
+            <div className="grid grid-cols-4 gap-4">
+              {Array.from({ length: gameConfig.totalEnvelopes || 24 }).map((_, i) => {
                 const p = participants.find(p => p.envelopeIndex === i);
                 return <PickEnvelope key={i} index={i} isTaken={!!p} isMine={p?.uid === user?.uid} onPick={handlePick} />;
               })}
@@ -343,29 +330,24 @@ const App = () => {
         )}
 
         {view === 'admin' && (
-          <div className="bg-white p-8 rounded-[2rem] shadow-2xl border-t-8 border-red-600 space-y-8 mt-4">
+          <div className="bg-white p-8 rounded-[2rem] shadow-2xl border-t-8 border-red-600 space-y-8 mt-4 animate-in slide-in-from-top-4 duration-500">
             {!isAdminAuthenticated ? (
-              <div className="text-center py-8 animate-in slide-in-from-top-4">
+              <div className="text-center py-8">
                 <div className="bg-red-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8 text-red-600 shadow-inner">
                   <Lock size={48} />
                 </div>
                 <h2 className="text-2xl font-black text-red-900 mb-6 tracking-widest">管理者驗證</h2>
                 <form onSubmit={(e) => {
                   e.preventDefault();
-                  if (adminPasswordInput === ADMIN_PASSWORD) {
-                    setIsAdminAuthenticated(true);
-                    setError('');
-                  } else {
-                    setError('密碼不正確');
-                    setAdminPasswordInput('');
-                  }
+                  if (adminPasswordInput === ADMIN_PASSWORD) { setIsAdminAuthenticated(true); setError(''); }
+                  else { setError('密碼不正確'); setAdminPasswordInput(''); }
                 }} className="space-y-6">
                   <input type="password" value={adminPasswordInput} onChange={(e) => setAdminPasswordInput(e.target.value)} placeholder="管理密碼" className="w-full p-5 border-2 border-red-100 rounded-[1.2rem] text-center outline-none focus:border-red-500 text-xl font-bold" />
                   <button className="w-full bg-red-600 text-white font-black py-4 rounded-[1.2rem] shadow-lg flex items-center justify-center gap-2 text-lg">驗證解鎖</button>
                 </form>
               </div>
             ) : (
-              <div className="animate-in fade-in duration-500">
+              <div>
                 <div className="flex justify-between items-center mb-8 pb-3 border-b-2 border-red-50">
                   <h2 className="text-2xl font-black text-red-900 flex items-center gap-3"><Settings size={24} className="text-red-600" /> 管理中心</h2>
                   <button onClick={() => setIsAdminAuthenticated(false)} className="text-sm font-bold text-red-400 bg-red-50 px-3 py-1 rounded-full">退出</button>
@@ -386,27 +368,19 @@ const App = () => {
                   <p className="text-sm text-slate-400 font-black mb-4 flex items-center gap-2 px-2"><Users size={18}/> 報名清單 ({participants.length})</p>
                   <div className="max-h-60 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
                     {participants.map(p => (
-                      <div key={p.id} className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-200 hover:bg-white transition-colors">
+                      <div key={p.id} className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-200">
                         <span className="font-black text-slate-700 text-base">#{p.envelopeIndex+1} {p.name}</span>
-                        <button onClick={() => deleteParticipant(p.id)} className="text-red-300 hover:text-red-600 p-2 rounded-lg hover:bg-red-50 transition-all">
-                          <Trash2 size={20} />
-                        </button>
+                        <button onClick={() => deleteParticipant(p.id)} className="text-red-300 hover:text-red-600 p-2"><Trash2 size={20} /></button>
                       </div>
                     ))}
                   </div>
                 </div>
 
                 <div className="space-y-4">
-                  <button onClick={handleMatch} disabled={participants.length < 2} className="w-full bg-red-600 text-white font-black py-5 rounded-[1.2rem] shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all text-lg">正式配對並生成金額</button>
-                  
+                  <button onClick={handleMatch} disabled={participants.length < 2} className="w-full bg-red-600 text-white font-black py-5 rounded-[1.2rem] shadow-xl active:scale-95 transition-all text-lg">正式配對並生成金額</button>
                   <div className="flex gap-4">
-                    <button 
-                      onClick={() => updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'), { showAllResults: !gameConfig.showAllResults })} 
-                      className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-[1.2rem] font-black border-2 transition-all shadow-md ${gameConfig.showAllResults ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-slate-50 text-slate-500 border-slate-200'}`}
-                    >
-                      {gameConfig.showAllResults ? <><EyeOff size={22}/> 隱藏全體結果</> : <><Eye size={22}/> 公佈全體結果</>}
-                    </button>
-                    <button onClick={resetGame} className="px-5 bg-white text-red-400 border-2 border-red-100 rounded-[1.2rem] flex items-center justify-center hover:bg-red-50 transition-all shadow-md"><RotateCcw size={22}/></button>
+                    <button onClick={() => updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'), { showAllResults: !gameConfig.showAllResults })} className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-[1.2rem] font-black border-2 transition-all shadow-md ${gameConfig.showAllResults ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-slate-50 text-slate-500 border-slate-200'}`}>{gameConfig.showAllResults ? <><EyeOff size={22}/> 隱藏全體結果</> : <><Eye size={22}/> 公佈全體結果</>}</button>
+                    <button onClick={resetGame} className="px-5 bg-white text-red-400 border-2 border-red-100 rounded-[1.2rem] flex items-center justify-center shadow-md"><RotateCcw size={22}/></button>
                   </div>
                 </div>
               </div>
@@ -415,30 +389,27 @@ const App = () => {
         )}
 
         {view === 'results' && (
-          <div className="mt-6 pb-20">
+          <div className="mt-6 pb-20 animate-in fade-in duration-700">
             <div className="text-center mb-12">
               <h2 className="text-3xl font-black text-red-800 tracking-widest">緣分揭曉</h2>
               <p className="text-sm text-slate-400 mt-3 font-bold">
-                {gameConfig.status === 'collecting' ? '⌛ 請耐心等待開獎...' : '✨ 點擊紅包查看金額'}
+                {gameConfig.status === 'collecting' ? '⌛ 所有人選完後由管理者開獎...' : '✨ 點擊紅包查看金額，再次點擊收起'}
               </p>
             </div>
 
             {gameConfig.status === 'finished' ? (
-              <div className="space-y-32">
-                {/* 使用者個人紅包 */}
+              <div className="space-y-40">
+                {/* 顯示使用者的個人專屬紅包 (即使還沒公佈全體，自己也能看) */}
                 {(() => {
-                  const myPair = finalPairs.find(p => 
-                    p.p1.uid === user?.uid || (p.isPair && p.p2.uid === user?.uid)
-                  );
+                  const myPair = finalPairs.find(p => p.p1.uid === user?.uid || (p.isPair && p.p2.uid === user?.uid));
                   if (!myPair) return null;
-                  
                   const myData = myPair.p1.uid === user?.uid ? myPair.p1 : myPair.p2;
                   return (
-                    <div className="flex flex-col items-center bg-white p-10 rounded-[3rem] shadow-2xl border-4 border-yellow-500/40 relative animate-in zoom-in duration-700">
+                    <div className="flex flex-col items-center bg-white p-10 rounded-[3rem] shadow-2xl border-4 border-yellow-500/40 relative animate-in zoom-in duration-700 mb-12">
                       <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-yellow-500 text-red-900 px-6 py-2 rounded-full text-sm font-black shadow-xl tracking-widest">您的專屬紅包</div>
                       <ResultEnvelope pData={myData} />
-                      <div className="mt-8 text-center bg-red-50 px-8 py-3 rounded-2xl border-2 border-red-100">
-                        <p className="text-red-400 text-xs font-black mb-1">配對組合</p>
+                      <div className="mt-8 text-center bg-red-50 px-8 py-3 rounded-2xl border-2 border-red-100 w-full">
+                        <p className="text-red-400 text-xs font-black mb-1">您的配對組合</p>
                         <p className="font-black text-red-800 text-2xl tracking-widest">
                           {myPair.isPair ? `${myPair.p1.name} ❤️ ${myPair.p2.name}` : `${myPair.p1.name} (大吉獨贏)`}
                         </p>
@@ -447,32 +418,33 @@ const App = () => {
                   );
                 })()}
 
+                {/* 公佈全體結果區 (加大上下間距) */}
                 {gameConfig.showAllResults ? (
                   <div className="animate-in fade-in slide-in-from-bottom-12 duration-1000">
-                    <div className="flex items-center gap-6 mb-16">
+                    <div className="flex items-center gap-6 mb-20">
                       <div className="h-px bg-red-200 flex-1 shadow-sm"></div>
-                      <span className="text-red-500 text-sm font-black tracking-[0.3em] uppercase">全體名單</span>
+                      <span className="text-red-500 text-sm font-black tracking-[0.3em] uppercase">全體配對清單</span>
                       <div className="h-px bg-red-200 flex-1 shadow-sm"></div>
                     </div>
                     
-                    <div className="space-y-48">
+                    <div className="space-y-64"> {/* 加大配對組合之間的距離 */}
                       {finalPairs.map((pair, idx) => (
-                        <div key={idx} className="bg-white/70 backdrop-blur-md rounded-[3rem] p-12 border-2 border-red-50 shadow-lg transition-all hover:scale-[1.02]">
+                        <div key={idx} className="bg-white/70 backdrop-blur-md rounded-[3rem] p-12 border-2 border-red-50 shadow-lg">
                           {pair.isPair ? (
-                            <div className="flex flex-col gap-16">
-                              <div className="grid grid-cols-2 gap-10 relative">
+                            <div className="flex flex-col gap-20">
+                              <div className="grid grid-cols-2 gap-12 relative">
                                 <ResultEnvelope pData={pair.p1} />
                                 <ResultEnvelope pData={pair.p2} />
-                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-4xl animate-pulse filter drop-shadow-md">❤️</div>
+                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-5xl animate-pulse filter drop-shadow-md">❤️</div>
                               </div>
-                              <div className="text-center font-black text-red-900 text-2xl bg-gradient-to-r from-red-50 to-red-100 py-5 rounded-[1.5rem] border-2 border-red-200 shadow-inner">
+                              <div className="text-center font-black text-red-900 text-2xl bg-gradient-to-r from-red-50 to-red-100 py-6 rounded-[2rem] border-2 border-red-200 shadow-inner">
                                 {pair.p1.name} & {pair.p2.name}
                               </div>
                             </div>
                           ) : (
-                            <div className="flex flex-col items-center gap-10">
+                            <div className="flex flex-col items-center gap-12">
                               <ResultEnvelope pData={pair.p1} />
-                              <div className="text-center font-black text-amber-800 bg-amber-50 px-12 py-3 rounded-full border-2 border-amber-200 shadow-sm text-xl">
+                              <div className="text-center font-black text-amber-800 bg-amber-50 px-12 py-4 rounded-full border-2 border-amber-200 shadow-sm text-2xl">
                                 🌟 {pair.p1.name} 大吉大利
                               </div>
                             </div>
@@ -485,15 +457,15 @@ const App = () => {
                   <div className="text-center p-16 bg-white/40 rounded-[3rem] border-4 border-dotted border-red-200 shadow-inner">
                     <Eye size={48} className="mx-auto text-red-200 mb-6" />
                     <p className="text-red-300 font-black text-lg tracking-widest">全體配對結果尚未揭曉</p>
-                    <p className="text-xs text-red-200 mt-3 font-bold italic">請靜候現場管理者公佈！</p>
+                    <p className="text-xs text-red-200 mt-3 font-bold italic">請靜候管理者公佈！</p>
                   </div>
                 )}
               </div>
             ) : (
               <div className="bg-white p-20 rounded-[4rem] shadow-2xl text-center border-t-8 border-red-600 mt-4 animate-pulse">
                 <div className="text-8xl mb-10">🧧</div>
-                <p className="font-black text-red-800 text-2xl tracking-[0.5em]">福氣滿袋</p>
-                <p className="text-slate-400 text-sm mt-5 font-bold">當管理者開獎後，您將看到配對結果</p>
+                <p className="font-black text-red-800 text-2xl tracking-[0.5em]">紅包已封好</p>
+                <p className="text-slate-400 text-sm mt-5 font-bold">目前已有 {participants.length} 位參加者<br/>請等待管理者生成配對結果！</p>
               </div>
             )}
           </div>
