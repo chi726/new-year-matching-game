@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Gift, ChevronRight, Trophy, AlertCircle, Settings, Users, Trash2, Lock, Eye, EyeOff, RotateCcw, CheckCircle
-} from 'lucide-react'; // 修正：補上了漏掉的 EyeOff 引用
+} from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { 
   getFirestore, collection, doc, setDoc, 
@@ -10,6 +10,7 @@ import {
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 
 // --- Firebase 配置 ---
+// 請填入您的 Firebase Console 配置資訊
 const firebaseConfig = {
   apiKey: "AIzaSyDxRqhqlq0N-ABlE8LxPoP7a5YdHvDEqXQ",
   authDomain: "newyearmatchgame.firebaseapp.com",
@@ -46,6 +47,7 @@ const App = () => {
   const [adminPasswordInput, setAdminPasswordInput] = useState('');
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
 
+  // 1. 初始化驗證
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -59,13 +61,14 @@ const App = () => {
     return () => unsubscribe();
   }, []);
 
+  // 2. 監聽雲端資料
   useEffect(() => {
     if (!user) return;
 
     const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config');
     const unsubConfig = onSnapshot(configRef, (docSnap) => {
       if (docSnap.exists()) {
-        setGameConfig(docSnap.data());
+        setGameConfig(prev => ({ ...prev, ...docSnap.data() }));
       } else {
         setDoc(configRef, { 
           targetSum: 6600, 
@@ -93,6 +96,17 @@ const App = () => {
     };
   }, [user]);
 
+  // 3. 自動跳轉功能：如果判斷到當前使用者已在名單中，自動跳到結果頁
+  useEffect(() => {
+    if (user && participants.length > 0 && view === 'landing') {
+      const myEnrollment = participants.find(p => p.uid === user.uid);
+      if (myEnrollment) {
+        setCurrentNickname(myEnrollment.name);
+        setView('results');
+      }
+    }
+  }, [user, participants, view]);
+
   const getCashDetails = (value) => {
     if (typeof value !== 'number') return [];
     let remaining = value;
@@ -119,7 +133,7 @@ const App = () => {
   const handleJoin = (e) => {
     e.preventDefault();
     if (!currentNickname.trim()) return;
-    if (participants.some(p => p.name === currentNickname.trim())) {
+    if (participants.some(p => p.name === currentNickname.trim() && p.uid !== user?.uid)) {
       setError('此暱稱已被使用');
       return;
     }
@@ -162,7 +176,6 @@ const App = () => {
     }
   };
 
-  // 管理者：【一鍵配對並公佈】
   const handleMatchAndShow = async () => {
     if (!user || participants.length < 2) return;
     try {
@@ -189,19 +202,19 @@ const App = () => {
           await addDoc(pairsColl, { p1: { ...shuffled[i], value: '福' }, isPair: false });
         }
       }
-      // 直接將結果狀態設為完成且顯示全體結果
-      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'), { 
+      
+      const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config');
+      await updateDoc(configRef, { 
         status: 'finished',
         showAllResults: true 
       });
-      setSuccess('大揭曉！配對結果已公佈至所有人螢幕。');
+      setSuccess('大功告成！全體結果已即時同步公佈。');
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError('執行配對失敗');
+      setError('配對執行失敗');
     }
   };
 
-  // 管理者：重新生成所有人的隨機金額（更改設定時使用）
   const regenerateAmounts = async () => {
     if (!participants.length) return;
     try {
@@ -210,7 +223,7 @@ const App = () => {
         const newVal = (Math.floor(Math.random() * 26) + 5) * 100;
         return updateDoc(doc(partsColl, p.id), { value: newVal });
       }));
-      setSuccess('基礎金額已根據最新設定重新生成！');
+      setSuccess('金額已重新生成！');
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setError('更新失敗');
@@ -233,7 +246,7 @@ const App = () => {
         showAllResults: false 
       });
       setRevealedIds(new Set());
-      setSuccess('遊戲已重置，現在可以重新報名。');
+      setSuccess('系統已重置。');
     } catch (err) {
       setError('重置失敗');
     }
@@ -266,14 +279,15 @@ const App = () => {
           className="relative h-44 w-full max-w-[160px] cursor-pointer"
           style={{ perspective: '1000px' }}
         >
-          <div className={`absolute inset-x-2 transition-all duration-700 flex flex-col items-center ${isRevealed ? '-translate-y-24 opacity-100 scale-110' : 'translate-y-0 opacity-0'}`}>
+          {/* 內容物彈出層 - z-index 較低，動畫更自然 */}
+          <div className={`absolute inset-x-2 transition-all duration-700 flex flex-col items-center z-10 ${isRevealed ? '-translate-y-28 opacity-100 scale-110' : 'translate-y-0 opacity-0'}`}>
             {pData.value ? (
               <>
                 <div className="flex flex-wrap justify-center gap-1 mb-3 max-w-[140px]">
                   {cashItems.map((item, i) => <CashIcon key={i} item={item} />)}
                   {pData.value === '福' && <div className="text-5xl">🧧</div>}
                 </div>
-                <div className="bg-white px-4 py-1 rounded-full shadow-xl border-2 border-red-50 font-black text-red-600 whitespace-nowrap text-base shadow-red-200/50">
+                <div className="bg-white px-4 py-1 rounded-full shadow-2xl border-2 border-red-50 font-black text-red-600 whitespace-nowrap text-base">
                   {pData.value === '福' ? '大吉大利' : `$${pData.value}`}
                 </div>
               </>
@@ -284,10 +298,11 @@ const App = () => {
             )}
           </div>
 
-          <div className={`absolute inset-0 bg-red-600 rounded-xl border-2 border-yellow-500 shadow-xl z-10 flex flex-col items-center justify-center transition-transform duration-500 ${isRevealed ? 'translate-y-8 opacity-90 scale-95' : ''}`}>
+          {/* 紅包本體 - z-index 中等 */}
+          <div className={`absolute inset-0 bg-red-600 rounded-xl border-2 border-yellow-500 shadow-xl z-20 flex flex-col items-center justify-center transition-transform duration-500 ${isRevealed ? 'translate-y-8 opacity-90 scale-95' : ''}`}>
             <div className="absolute top-0 w-full h-1/4 bg-red-700 rounded-b-3xl border-b border-yellow-600/30"></div>
             <div className="text-yellow-400 font-bold text-2xl mb-1">{(Number(pData.envelopeIndex) || 0) + 1}</div>
-            <div className="w-10 h-10 rounded-full bg-yellow-500 flex items-center justify-center text-red-700 font-serif text-sm border-2 border-yellow-200 shadow-inner">福</div>
+            <div className="w-10 h-10 rounded-full bg-yellow-500 flex items-center justify-center text-red-700 font-serif text-sm border-2 border-yellow-200 shadow-inner font-bold">福</div>
             <div className="mt-2 text-[10px] text-red-200 font-medium px-2 truncate w-full text-center">
               {showName ? String(pData.name) : '點擊查看'}
             </div>
@@ -313,30 +328,32 @@ const App = () => {
 
       <header className="bg-gradient-to-b from-red-700 to-red-800 text-yellow-400 p-10 text-center shadow-2xl border-b-4 border-yellow-500 relative">
         <h1 className="text-4xl font-black tracking-widest drop-shadow-lg">新春紅包大配對</h1>
-        <div className="inline-block mt-4 px-5 py-1.5 bg-red-900/50 rounded-full text-xs text-red-100 border border-red-600/50 backdrop-blur-sm">
+        <div className="inline-block mt-4 px-5 py-1.5 bg-red-900/50 rounded-full text-xs text-red-100 border border-red-600/50 backdrop-blur-sm font-bold">
           已有 {participants.length} 人參與
         </div>
       </header>
 
       <main className="max-w-md mx-auto mt-8 px-5">
-        {error && <div className="mb-6 p-4 bg-red-100 text-red-700 rounded-2xl text-sm font-bold flex items-center gap-2 shadow-md"><AlertCircle size={18} />{String(error)}</div>}
+        {error && <div className="mb-6 p-4 bg-red-100 text-red-700 rounded-2xl text-sm font-bold flex items-center gap-2 shadow-md animate-in slide-in-from-top-2"><AlertCircle size={18} />{String(error)}</div>}
         {success && <div className="mb-6 p-4 bg-emerald-100 text-emerald-700 rounded-2xl text-sm font-bold flex items-center gap-2 shadow-md animate-pulse"><CheckCircle size={18} />{String(success)}</div>}
 
         {view === 'landing' && (
           <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl text-center border-t-8 border-red-600 mt-4 animate-in fade-in zoom-in duration-500">
             <div className="text-8xl mb-8">🧧</div>
-            <h2 className="text-2xl font-black text-red-900 mb-2">新年大吉！緣分紅包</h2>
-            <p className="text-slate-500 text-sm mb-10">輸入暱稱，開啟新春好運</p>
+            <h2 className="text-2xl font-black text-red-900 mb-2 tracking-widest">新年大吉！緣分紅包</h2>
+            <p className="text-slate-500 text-sm mb-10 font-bold">輸入暱稱，開啟新春好運</p>
             <form onSubmit={handleJoin} className="space-y-6">
               <input type="text" value={currentNickname} onChange={(e) => setCurrentNickname(e.target.value)} placeholder="輸入您的暱稱" className="w-full p-5 bg-orange-50 border-2 border-red-50 rounded-[1.5rem] text-center text-xl font-black outline-none focus:border-red-500 focus:bg-white shadow-inner" />
-              <button className="w-full bg-red-600 text-white font-black py-5 rounded-[1.5rem] shadow-xl hover:bg-red-700 active:scale-95 flex items-center justify-center gap-3 text-lg">開始挑選 <ChevronRight size={24}/></button>
+              <button className="w-full bg-red-600 text-white font-black py-5 rounded-[1.5rem] shadow-xl hover:bg-red-700 active:scale-95 transition-all flex items-center justify-center gap-3 text-lg">
+                開始挑選 <ChevronRight size={24}/>
+              </button>
             </form>
           </div>
         )}
 
         {view === 'picking' && (
           <div className="mt-4 animate-in slide-in-from-bottom-8 duration-500">
-            <h3 className="text-center font-black text-red-800 text-xl mb-8">嗨 {currentNickname}，請挑一個位置</h3>
+            <h3 className="text-center font-black text-red-800 text-xl mb-8 tracking-wider">嗨 {currentNickname}，請挑一個位置</h3>
             <div className="grid grid-cols-4 gap-4">
               {Array.from({ length: gameConfig.totalEnvelopes || 24 }).map((_, i) => {
                 const p = participants.find(p => p.envelopeIndex === i);
@@ -345,7 +362,7 @@ const App = () => {
                     {!p && <div className="absolute top-0 inset-x-0 h-6 bg-red-700 rounded-b-2xl border-b border-yellow-600/30"></div>}
                     <span className={`text-[10px] ${p?.uid === user?.uid ? 'text-yellow-800' : 'text-yellow-200/50'}`}>No.</span>
                     <span className={`text-2xl font-black ${p?.uid === user?.uid ? 'text-red-700' : 'text-yellow-400'}`}>{i + 1}</span>
-                    {!p && <div className="mt-1 w-6 h-6 rounded-full bg-yellow-500 flex items-center justify-center text-[8px] text-red-800 border border-yellow-200 shadow-inner font-bold">福</div>}
+                    {!p && <div className="mt-1 w-6 h-6 rounded-full bg-yellow-500 flex items-center justify-center text-[8px] text-red-800 border border-yellow-200 shadow-inner font-bold font-serif">福</div>}
                   </button>
                 );
               })}
@@ -354,12 +371,12 @@ const App = () => {
         )}
 
         {view === 'admin' && (
-          <div className="bg-white p-8 rounded-[2rem] shadow-2xl border-t-8 border-red-600 space-y-8 mt-4">
+          <div className="bg-white p-8 rounded-[2rem] shadow-2xl border-t-8 border-red-600 space-y-8 mt-4 animate-in slide-in-from-top-4 duration-500">
             {!isAdminAuthenticated ? (
               <div className="text-center py-8">
                 <div className="bg-red-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8 text-red-600 shadow-inner"><Lock size={48} /></div>
-                <h2 className="text-2xl font-black text-red-900 mb-6 tracking-widest">管理者驗證</h2>
-                <form onSubmit={(e) => { e.preventDefault(); if (adminPasswordInput === ADMIN_PASSWORD) setIsAdminAuthenticated(true); else setError('密碼不正確'); }} className="space-y-6">
+                <h2 className="text-2xl font-black text-red-900 mb-6 tracking-widest uppercase">管理者驗證</h2>
+                <form onSubmit={(e) => { e.preventDefault(); if (adminPasswordInput === ADMIN_PASSWORD) setIsAdminAuthenticated(true); else { setError('密碼不正確'); setAdminPasswordInput(''); } }} className="space-y-6">
                   <input type="password" value={adminPasswordInput} onChange={(e) => setAdminPasswordInput(e.target.value)} placeholder="管理密碼" className="w-full p-5 border-2 border-red-100 rounded-[1.2rem] text-center outline-none focus:border-red-500 text-xl font-bold" />
                   <button className="w-full bg-red-600 text-white font-black py-4 rounded-[1.2rem] shadow-lg text-lg">驗證解鎖</button>
                 </form>
@@ -371,12 +388,11 @@ const App = () => {
                   <button onClick={() => setIsAdminAuthenticated(false)} className="text-sm font-bold text-red-400 bg-red-50 px-3 py-1 rounded-full">退出管理</button>
                 </div>
                 
-                {/* 1. 基礎設定區 */}
-                <div className="bg-orange-50/50 p-6 rounded-3xl border border-orange-100 mb-8">
-                  <h3 className="text-sm font-black text-orange-800 mb-4 flex items-center gap-2">1. 系統設定</h3>
+                <div className="bg-orange-50/50 p-6 rounded-3xl border border-orange-100 mb-8 shadow-inner">
+                  <h3 className="text-sm font-black text-orange-800 mb-4 flex items-center gap-2 underline decoration-orange-300 underline-offset-4">1. 系統與金額設定</h3>
                   <div className="grid grid-cols-2 gap-5 mb-5">
                     <div>
-                      <label className="text-[10px] font-black text-orange-700 block mb-1 tracking-widest uppercase">目標配對總額</label>
+                      <label className="text-[10px] font-black text-orange-700 block mb-1 tracking-widest uppercase">目標配對總額 (R)</label>
                       <input type="number" step="100" value={gameConfig.targetSum} onChange={(e) => updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'), { targetSum: parseInt(e.target.value) || 0 })} className="w-full p-3 rounded-xl border-2 border-orange-200 text-center font-black text-red-800 outline-none" />
                     </div>
                     <div>
@@ -384,24 +400,24 @@ const App = () => {
                       <input type="number" value={gameConfig.totalEnvelopes} onChange={(e) => updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'), { totalEnvelopes: parseInt(e.target.value) || 24 })} className="w-full p-3 rounded-xl border-2 border-orange-200 text-center font-black text-red-800 outline-none" />
                     </div>
                   </div>
-                  <button onClick={regenerateAmounts} disabled={!participants.length} className="w-full bg-orange-600 text-white font-black py-3 rounded-xl shadow-md active:scale-95 text-xs">更新設定並重算初始金額</button>
+                  <button onClick={regenerateAmounts} disabled={!participants.length} className="w-full bg-orange-600 text-white font-black py-4 rounded-2xl shadow-lg active:scale-95 transition-all text-sm flex items-center justify-center gap-2">
+                    <RotateCcw size={18}/> 重新生成所有參加者金額
+                  </button>
                 </div>
 
-                <p className="text-sm text-slate-400 font-black mb-4 flex items-center gap-2"><Users size={18}/> 報名清單 ({participants.length})</p>
+                <p className="text-sm text-slate-400 font-black mb-4 flex items-center gap-2 px-2"><Users size={18}/> 報名清單 ({participants.length})</p>
                 <div className="max-h-60 overflow-y-auto space-y-3 mb-10 pr-2 custom-scrollbar">
                   {participants.map(p => (
-                    <div key={p.id} className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                    <div key={p.id} className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-200 hover:bg-white transition-colors">
                       <span className="font-black text-slate-700 text-sm">#{p.envelopeIndex+1} {p.name} (${p.value})</span>
                       <button onClick={() => deleteParticipant(p.id)} className="text-red-300 hover:text-red-600 p-2 rounded-lg hover:bg-red-50 transition-all"><Trash2 size={20} /></button>
                     </div>
                   ))}
                 </div>
 
-                {/* 2. 執行配對區 - 結合按鈕 */}
                 <div className="bg-red-50/50 p-6 rounded-[2rem] border border-red-100 shadow-inner">
-                  <h3 className="text-sm font-black text-red-800 mb-5 flex items-center gap-2">2. 最終操作</h3>
+                  <h3 className="text-sm font-black text-red-800 mb-5 flex items-center gap-2 underline decoration-red-300 underline-offset-4 font-bold">2. 揭曉與操作區</h3>
                   <div className="space-y-4">
-                    {/* 配對與公佈結合 */}
                     <button 
                       onClick={handleMatchAndShow} 
                       disabled={participants.length < 2} 
@@ -411,14 +427,13 @@ const App = () => {
                     </button>
                     
                     <div className="flex gap-4">
-                      {/* 獨立切換顯示開關，防止誤點後想收回 */}
                       <button 
                         onClick={() => updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'), { showAllResults: !gameConfig.showAllResults })} 
                         className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-[1.2rem] font-black border-2 transition-all shadow-md ${gameConfig.showAllResults ? 'bg-amber-50 text-amber-600 border-amber-200' : 'bg-slate-50 text-slate-500 border-slate-200'}`}
                       >
                         {gameConfig.showAllResults ? <><EyeOff size={22}/> 隱藏結果</> : <><Eye size={22}/> 顯示結果</>}
                       </button>
-                      <button onClick={resetGame} className="px-5 bg-white text-red-400 border-2 border-red-100 rounded-[1.2rem] flex items-center justify-center shadow-md active:bg-red-50 transition-colors"><RotateCcw size={22}/></button>
+                      <button onClick={resetGame} className="px-5 bg-white text-red-400 border-2 border-red-100 rounded-[1.2rem] flex items-center justify-center shadow-md active:bg-red-50 transition-colors" title="重置遊戲"><RotateCcw size={22}/></button>
                     </div>
                   </div>
                 </div>
@@ -431,20 +446,20 @@ const App = () => {
           <div className="mt-6 pb-20 animate-in fade-in duration-700">
             <div className="text-center mb-12">
               <h2 className="text-3xl font-black text-red-800 tracking-widest">緣分揭曉</h2>
-              <p className="text-sm text-slate-400 mt-3 font-bold">✨ 點擊紅包查看金額，再次點擊收起</p>
+              <p className="text-sm text-slate-400 mt-3 font-bold tracking-wider">✨ 點擊紅包查看金額，再次點擊收起</p>
             </div>
 
             <div className="space-y-40">
-              {/* 【個人專屬紅包區】：pt-48 避讓動畫 */}
+              {/* 【個人專屬紅包區】：加大 pt-80 並確保標籤層級最高 */}
               {(() => {
                 const myResult = finalPairs.find(p => p.p1.uid === user?.uid || (p.isPair && p.p2.uid === user?.uid));
                 const myEnrollment = participants.find(p => p.uid === user?.uid);
                 
                 if (!myEnrollment && !myResult) return (
-                  <div className="bg-white p-16 rounded-[4rem] shadow-xl text-center border-t-8 border-red-600">
+                  <div className="bg-white p-16 rounded-[4rem] shadow-xl text-center border-t-8 border-red-600 animate-in zoom-in">
                     <div className="text-8xl mb-10">🧧</div>
                     <p className="font-black text-red-800 text-2xl tracking-widest uppercase">您尚未參加</p>
-                    <p className="text-slate-400 text-sm mt-5">請返回抽取頁面挑選紅包</p>
+                    <p className="text-slate-400 text-sm mt-5 font-bold tracking-widest italic">請前往抽取頁面挑選紅包</p>
                   </div>
                 );
 
@@ -453,47 +468,48 @@ const App = () => {
                   : myEnrollment;
 
                 return (
-                  <div className="flex flex-col items-center bg-white pt-48 pb-10 px-10 rounded-[3rem] shadow-2xl border-4 border-yellow-500/40 relative animate-in zoom-in duration-700 mb-12">
-                    <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-yellow-500 text-red-900 px-8 py-2.5 rounded-full text-sm font-black shadow-xl tracking-widest z-50 border-2 border-yellow-200">您的專屬紅包</div>
+                  <div className="flex flex-col items-center bg-white pt-80 pb-12 px-10 rounded-[3rem] shadow-2xl border-4 border-yellow-500/40 relative animate-in zoom-in duration-700 mb-12">
+                    {/* 標籤絕對懸浮在最頂層 */}
+                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-yellow-500 text-red-900 px-10 py-3.5 rounded-full text-base font-black shadow-xl tracking-widest z-[100] border-4 border-yellow-200 ring-4 ring-yellow-600/10">您的專屬紅包</div>
                     <ResultEnvelope pData={pData} />
-                    <div className="mt-12 text-center bg-red-50 px-8 py-5 rounded-3xl border-2 border-red-100 w-full shadow-inner">
-                      <p className="text-red-400 text-xs font-black mb-1 tracking-wider uppercase">您的配對組合</p>
-                      <p className="font-black text-red-800 text-2xl tracking-widest">
-                        {myResult ? (myResult.isPair ? `${myResult.p1.name} ❤️ ${myResult.p2.name}` : `${myResult.p1.name} (大吉獨贏)`) : "等待管理者揭曉中..."}
+                    <div className="mt-16 text-center bg-red-50 px-8 py-6 rounded-[2rem] border-2 border-red-100 w-full shadow-inner relative z-10">
+                      <p className="text-red-400 text-[11px] font-black mb-1 tracking-widest uppercase opacity-70">您的命中組合</p>
+                      <p className="font-black text-red-800 text-3xl tracking-widest">
+                        {myResult ? (myResult.isPair ? `${myResult.p1.name} ❤️ ${myResult.p2.name}` : `${myResult.p1.name} (大吉獨贏)`) : "揭曉倒數中..."}
                       </p>
                     </div>
                   </div>
                 );
               })()}
 
-              {/* 【全體揭曉區】：空間感極大化 */}
+              {/* 【全體揭曉區】：空間優化 */}
               {gameConfig.showAllResults ? (
                 <div className="animate-in fade-in slide-in-from-bottom-12 duration-1000">
                   <div className="flex items-center gap-6 mb-24">
                     <div className="h-px bg-red-200 flex-1 shadow-sm"></div>
-                    <span className="text-red-500 text-sm font-black tracking-[0.4em] uppercase">命中注定揭曉</span>
+                    <span className="text-red-500 text-sm font-black tracking-[0.6em] uppercase px-4">命中注定名單</span>
                     <div className="h-px bg-red-200 flex-1 shadow-sm"></div>
                   </div>
                   
-                  <div className="space-y-[32rem]"> {/* 超大幅度拉開間距，避免滾動重疊感 */}
+                  <div className="space-y-[38rem]"> {/* 進一步拉開間距 */}
                     {finalPairs.length > 0 ? finalPairs.map((pair, idx) => (
-                      <div key={idx} className="bg-white/80 backdrop-blur-md rounded-[3.5rem] pt-48 pb-12 px-12 border-2 border-red-100 shadow-2xl transition-all relative">
-                        <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-red-600 text-white px-8 py-2 rounded-full text-xs font-black shadow-xl z-40 border-2 border-red-400">緣分組合 #{idx+1}</div>
+                      <div key={idx} className="bg-white/80 backdrop-blur-md rounded-[4rem] pt-80 pb-14 px-12 border-2 border-red-100 shadow-2xl transition-all relative group">
+                        <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-red-600 text-white px-8 py-2.5 rounded-full text-xs font-black shadow-xl z-[100] border-2 border-red-400 tracking-widest">緣分組合 #{idx+1}</div>
                         {pair.isPair ? (
-                          <div className="flex flex-col gap-28">
+                          <div className="flex flex-col gap-28 relative z-10">
                             <div className="grid grid-cols-2 gap-12 relative">
                               <ResultEnvelope pData={pair.p1} />
                               <ResultEnvelope pData={pair.p2} />
-                              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-6xl animate-pulse filter drop-shadow-md">❤️</div>
+                              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-6xl animate-pulse filter drop-shadow-2xl">❤️</div>
                             </div>
-                            <div className="text-center font-black text-red-900 text-2xl bg-gradient-to-r from-red-50 to-red-100 py-8 rounded-[2.5rem] border-2 border-red-200 shadow-inner">
+                            <div className="text-center font-black text-red-900 text-3xl bg-gradient-to-r from-red-50 to-red-100 py-10 rounded-[2.5rem] border-2 border-red-200 shadow-inner">
                               {pair.p1.name} & {pair.p2.name}
                             </div>
                           </div>
                         ) : (
-                          <div className="flex flex-col items-center gap-14">
+                          <div className="flex flex-col items-center gap-14 relative z-10">
                             <ResultEnvelope pData={pair.p1} />
-                            <div className="text-center font-black text-amber-800 bg-amber-50 px-14 py-4 rounded-full border-2 border-amber-200 shadow-md text-2xl">
+                            <div className="text-center font-black text-amber-800 bg-amber-50 px-16 py-6 rounded-full border-2 border-amber-200 shadow-md text-2xl tracking-[0.2em]">
                               🌟 {pair.p1.name} 大吉大利
                             </div>
                           </div>
@@ -501,16 +517,16 @@ const App = () => {
                       </div>
                     )) : (
                       <div className="text-center py-24 bg-white/40 rounded-[3rem] border-2 border-dashed border-red-300">
-                        <p className="text-red-400 font-black text-lg">等待管理者執行配對動作</p>
+                        <p className="text-red-400 font-black text-xl tracking-widest animate-pulse">正在準備揭曉名單...</p>
                       </div>
                     )}
                   </div>
                 </div>
               ) : (
-                <div className="text-center p-20 bg-white/40 rounded-[4rem] border-4 border-dotted border-red-200 shadow-inner">
-                  <Eye size={56} className="mx-auto text-red-200 mb-8" />
-                  <p className="text-red-300 font-black text-xl tracking-widest uppercase">全體名單封印中</p>
-                  <p className="text-xs text-red-200 mt-3 font-bold">請關注管理者進行揭曉！</p>
+                <div className="text-center p-24 bg-white/40 rounded-[4rem] border-4 border-dotted border-red-200 shadow-inner animate-in fade-in">
+                  <Eye size={72} className="mx-auto text-red-200 mb-8" />
+                  <p className="text-red-300 font-black text-2xl tracking-[0.4em] uppercase">全體名單封存中</p>
+                  <p className="text-xs text-red-200 mt-5 font-bold tracking-[0.2em] italic">請靜待管理者按下公佈按鈕！</p>
                 </div>
               )}
             </div>
