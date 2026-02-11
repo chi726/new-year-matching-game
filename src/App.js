@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Gift, ChevronRight, Trophy, AlertCircle, Settings, Users, Trash2, Lock, Eye, EyeOff, RotateCcw
+  Gift, ChevronRight, Trophy, AlertCircle, Settings, Users, Trash2, Lock, Eye, RotateCcw, CheckCircle
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { 
@@ -10,7 +10,6 @@ import {
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 
 // --- Firebase 配置 ---
-// 請務必填入您在 Firebase Console 取得的真實資訊
 const firebaseConfig = {
   apiKey: "AIzaSyDxRqhqlq0N-ABlE8LxPoP7a5YdHvDEqXQ",
   authDomain: "newyearmatchgame.firebaseapp.com",
@@ -26,7 +25,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const appId = 'red-envelope-app'; 
 
-const ADMIN_PASSWORD = "2026"; 
+const ADMIN_PASSWORD = "2025"; 
 
 const App = () => {
   const [user, setUser] = useState(null);
@@ -41,6 +40,7 @@ const App = () => {
   const [finalPairs, setFinalPairs] = useState([]);
   const [currentNickname, setCurrentNickname] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [revealedIds, setRevealedIds] = useState(new Set());
   
   const [adminPasswordInput, setAdminPasswordInput] = useState('');
@@ -162,7 +162,8 @@ const App = () => {
     }
   };
 
-  const handleMatch = async () => {
+  // 管理者：【一鍵配對並公佈】
+  const handleMatchAndShow = async () => {
     if (!user || participants.length < 2) return;
     try {
       const pairsColl = collection(db, 'artifacts', appId, 'public', 'data', 'pairs');
@@ -188,17 +189,36 @@ const App = () => {
           await addDoc(pairsColl, { p1: { ...shuffled[i], value: '福' }, isPair: false });
         }
       }
+      // 直接將結果狀態設為完成且顯示全體結果
       await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'), { 
-        status: 'finished'
+        status: 'finished',
+        showAllResults: true 
       });
-      setError('');
+      setSuccess('大揭曉！配對結果已公佈至所有人螢幕。');
+      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError('生成失敗');
+      setError('執行配對失敗');
+    }
+  };
+
+  // 管理者：重新生成所有人的隨機金額（更改設定時使用）
+  const regenerateAmounts = async () => {
+    if (!participants.length) return;
+    try {
+      const partsColl = collection(db, 'artifacts', appId, 'public', 'data', 'participants');
+      await Promise.all(participants.map(p => {
+        const newVal = (Math.floor(Math.random() * 26) + 5) * 100;
+        return updateDoc(doc(partsColl, p.id), { value: newVal });
+      }));
+      setSuccess('基礎金額已根據最新設定重新生成！');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError('更新失敗');
     }
   };
 
   const resetGame = async () => {
-    if (!user || !window.confirm('確定要重置遊戲嗎？')) return;
+    if (!user || !window.confirm('確定要重置遊戲嗎？這將清空所有名單！')) return;
     try {
       const partsColl = collection(db, 'artifacts', appId, 'public', 'data', 'participants');
       const parts = await getDocs(partsColl);
@@ -213,6 +233,7 @@ const App = () => {
         showAllResults: false 
       });
       setRevealedIds(new Set());
+      setSuccess('遊戲已重置，現在可以重新報名。');
     } catch (err) {
       setError('重置失敗');
     }
@@ -245,7 +266,6 @@ const App = () => {
           className="relative h-44 w-full max-w-[160px] cursor-pointer"
           style={{ perspective: '1000px' }}
         >
-          {/* 內容物 (鈔票與硬幣) */}
           <div className={`absolute inset-x-2 transition-all duration-700 flex flex-col items-center ${isRevealed ? '-translate-y-24 opacity-100 scale-110' : 'translate-y-0 opacity-0'}`}>
             {pData.value ? (
               <>
@@ -259,12 +279,11 @@ const App = () => {
               </>
             ) : (
               <div className="bg-white/90 px-4 py-2 rounded-2xl shadow-lg border border-red-200 text-red-400 font-bold text-xs animate-pulse">
-                等待開獎中...
+                等待開獎...
               </div>
             )}
           </div>
 
-          {/* 紅包本體 */}
           <div className={`absolute inset-0 bg-red-600 rounded-xl border-2 border-yellow-500 shadow-xl z-10 flex flex-col items-center justify-center transition-transform duration-500 ${isRevealed ? 'translate-y-8 opacity-90 scale-95' : ''}`}>
             <div className="absolute top-0 w-full h-1/4 bg-red-700 rounded-b-3xl border-b border-yellow-600/30"></div>
             <div className="text-yellow-400 font-bold text-2xl mb-1">{(Number(pData.envelopeIndex) || 0) + 1}</div>
@@ -301,6 +320,7 @@ const App = () => {
 
       <main className="max-w-md mx-auto mt-8 px-5">
         {error && <div className="mb-6 p-4 bg-red-100 text-red-700 rounded-2xl text-sm font-bold flex items-center gap-2 shadow-md"><AlertCircle size={18} />{String(error)}</div>}
+        {success && <div className="mb-6 p-4 bg-emerald-100 text-emerald-700 rounded-2xl text-sm font-bold flex items-center gap-2 shadow-md animate-pulse"><CheckCircle size={18} />{String(success)}</div>}
 
         {view === 'landing' && (
           <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl text-center border-t-8 border-red-600 mt-4 animate-in fade-in zoom-in duration-500">
@@ -338,9 +358,9 @@ const App = () => {
             {!isAdminAuthenticated ? (
               <div className="text-center py-8">
                 <div className="bg-red-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8 text-red-600 shadow-inner"><Lock size={48} /></div>
-                <h2 className="text-2xl font-black text-red-900 mb-6">管理者驗證</h2>
+                <h2 className="text-2xl font-black text-red-900 mb-6 tracking-widest">管理者驗證</h2>
                 <form onSubmit={(e) => { e.preventDefault(); if (adminPasswordInput === ADMIN_PASSWORD) setIsAdminAuthenticated(true); else setError('密碼不正確'); }} className="space-y-6">
-                  <input type="password" value={adminPasswordInput} onChange={(e) => setAdminPasswordInput(e.target.value)} placeholder="管理密碼" className="w-full p-5 border-2 border-red-100 rounded-[1.2rem] text-center outline-none text-xl font-bold" />
+                  <input type="password" value={adminPasswordInput} onChange={(e) => setAdminPasswordInput(e.target.value)} placeholder="管理密碼" className="w-full p-5 border-2 border-red-100 rounded-[1.2rem] text-center outline-none focus:border-red-500 text-xl font-bold" />
                   <button className="w-full bg-red-600 text-white font-black py-4 rounded-[1.2rem] shadow-lg text-lg">驗證解鎖</button>
                 </form>
               </div>
@@ -348,32 +368,58 @@ const App = () => {
               <div>
                 <div className="flex justify-between items-center mb-8 pb-3 border-b-2 border-red-50">
                   <h2 className="text-2xl font-black text-red-900 flex items-center gap-3"><Settings size={24} className="text-red-600" /> 管理中心</h2>
-                  <button onClick={() => setIsAdminAuthenticated(false)} className="text-sm font-bold text-red-400 bg-red-50 px-3 py-1 rounded-full">退出</button>
+                  <button onClick={() => setIsAdminAuthenticated(false)} className="text-sm font-bold text-red-400 bg-red-50 px-3 py-1 rounded-full">退出管理</button>
                 </div>
-                <div className="grid grid-cols-2 gap-5 mb-8">
-                  <div className="p-4 bg-orange-50 rounded-2xl border border-orange-100 shadow-sm">
-                    <label className="text-xs font-black text-orange-700 block mb-2">目標總額 (R)</label>
-                    <input type="number" step="100" value={gameConfig.targetSum} onChange={(e) => updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'), { targetSum: parseInt(e.target.value) || 0 })} className="w-full p-3 rounded-xl border-2 border-orange-200 text-center font-black text-red-800 outline-none" />
+                
+                {/* 1. 基礎設定區 */}
+                <div className="bg-orange-50/50 p-6 rounded-3xl border border-orange-100 mb-8">
+                  <h3 className="text-sm font-black text-orange-800 mb-4 flex items-center gap-2">1. 系統設定</h3>
+                  <div className="grid grid-cols-2 gap-5 mb-5">
+                    <div>
+                      <label className="text-[10px] font-black text-orange-700 block mb-1 tracking-widest uppercase">目標配對總額</label>
+                      <input type="number" step="100" value={gameConfig.targetSum} onChange={(e) => updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'), { targetSum: parseInt(e.target.value) || 0 })} className="w-full p-3 rounded-xl border-2 border-orange-200 text-center font-black text-red-800 outline-none" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black text-orange-700 block mb-1 tracking-widest uppercase">紅包總格數</label>
+                      <input type="number" value={gameConfig.totalEnvelopes} onChange={(e) => updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'), { totalEnvelopes: parseInt(e.target.value) || 24 })} className="w-full p-3 rounded-xl border-2 border-orange-200 text-center font-black text-red-800 outline-none" />
+                    </div>
                   </div>
-                  <div className="p-4 bg-red-50 rounded-2xl border border-red-100 shadow-sm">
-                    <label className="text-xs font-black text-red-700 block mb-2">紅包總量</label>
-                    <input type="number" value={gameConfig.totalEnvelopes} onChange={(e) => updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'), { totalEnvelopes: parseInt(e.target.value) || 24 })} className="w-full p-3 rounded-xl border-2 border-red-200 text-center font-black text-red-800 outline-none" />
-                  </div>
+                  <button onClick={regenerateAmounts} disabled={!participants.length} className="w-full bg-orange-600 text-white font-black py-3 rounded-xl shadow-md active:scale-95 text-xs">更新設定並重算初始金額</button>
                 </div>
-                <p className="text-sm text-slate-400 font-black mb-4 flex items-center gap-2"><Users size={18}/> 參加名單 ({participants.length})</p>
-                <div className="max-h-60 overflow-y-auto space-y-3 mb-8 pr-2">
+
+                <p className="text-sm text-slate-400 font-black mb-4 flex items-center gap-2"><Users size={18}/> 報名清單 ({participants.length})</p>
+                <div className="max-h-60 overflow-y-auto space-y-3 mb-10 pr-2 custom-scrollbar">
                   {participants.map(p => (
                     <div key={p.id} className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-200">
-                      <span className="font-black text-slate-700">#{p.envelopeIndex+1} {p.name}</span>
-                      <button onClick={() => deleteParticipant(p.id)} className="text-red-300 hover:text-red-600"><Trash2 size={20} /></button>
+                      <span className="font-black text-slate-700 text-sm">#{p.envelopeIndex+1} {p.name} (${p.value})</span>
+                      <button onClick={() => deleteParticipant(p.id)} className="text-red-300 hover:text-red-600 p-2 rounded-lg hover:bg-red-50 transition-all"><Trash2 size={20} /></button>
                     </div>
                   ))}
                 </div>
-                <div className="space-y-4">
-                  <button onClick={handleMatch} disabled={participants.length < 2} className="w-full bg-red-600 text-white font-black py-5 rounded-[1.2rem] shadow-xl active:scale-95 text-lg">正式配對並生成金額</button>
-                  <div className="flex gap-4">
-                    <button onClick={() => updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'), { showAllResults: !gameConfig.showAllResults })} className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-[1.2rem] font-black border-2 transition-all shadow-md ${gameConfig.showAllResults ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-slate-50 text-slate-500 border-slate-200'}`}>{gameConfig.showAllResults ? <><EyeOff size={22}/> 隱藏全體結果</> : <><Eye size={22}/> 公佈全體結果</>}</button>
-                    <button onClick={resetGame} className="px-5 bg-white text-red-400 border-2 border-red-100 rounded-[1.2rem] flex items-center justify-center shadow-md"><RotateCcw size={22}/></button>
+
+                {/* 2. 執行配對區 - 結合按鈕 */}
+                <div className="bg-red-50/50 p-6 rounded-[2rem] border border-red-100 shadow-inner">
+                  <h3 className="text-sm font-black text-red-800 mb-5 flex items-center gap-2">2. 最終操作</h3>
+                  <div className="space-y-4">
+                    {/* 配對與公佈結合 */}
+                    <button 
+                      onClick={handleMatchAndShow} 
+                      disabled={participants.length < 2} 
+                      className="w-full bg-gradient-to-r from-red-600 to-red-700 text-white font-black py-6 rounded-[1.5rem] shadow-xl active:scale-95 transition-all text-xl flex items-center justify-center gap-3 border-b-4 border-red-900"
+                    >
+                      <Trophy size={24} /> 正式配對並公佈全體結果
+                    </button>
+                    
+                    <div className="flex gap-4">
+                      {/* 獨立切換顯示開關，防止誤點後想收回 */}
+                      <button 
+                        onClick={() => updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'), { showAllResults: !gameConfig.showAllResults })} 
+                        className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-[1.2rem] font-black border-2 transition-all shadow-md ${gameConfig.showAllResults ? 'bg-amber-50 text-amber-600 border-amber-200' : 'bg-slate-50 text-slate-500 border-slate-200'}`}
+                      >
+                        {gameConfig.showAllResults ? <><EyeOff size={22}/> 隱藏結果</> : <><Eye size={22}/> 顯示結果</>}
+                      </button>
+                      <button onClick={resetGame} className="px-5 bg-white text-red-400 border-2 border-red-100 rounded-[1.2rem] flex items-center justify-center shadow-md active:bg-red-50 transition-colors"><RotateCcw size={22}/></button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -389,7 +435,7 @@ const App = () => {
             </div>
 
             <div className="space-y-40">
-              {/* 【個人專屬紅包區】：增加 pt-32 以解決重疊問題 */}
+              {/* 【個人專屬紅包區】：pt-48 避讓動畫 */}
               {(() => {
                 const myResult = finalPairs.find(p => p.p1.uid === user?.uid || (p.isPair && p.p2.uid === user?.uid));
                 const myEnrollment = participants.find(p => p.uid === user?.uid);
@@ -397,7 +443,8 @@ const App = () => {
                 if (!myEnrollment && !myResult) return (
                   <div className="bg-white p-16 rounded-[4rem] shadow-xl text-center border-t-8 border-red-600">
                     <div className="text-8xl mb-10">🧧</div>
-                    <p className="font-black text-red-800 text-2xl tracking-widest">尚未參加</p>
+                    <p className="font-black text-red-800 text-2xl tracking-widest uppercase">您尚未參加</p>
+                    <p className="text-slate-400 text-sm mt-5">請返回抽取頁面挑選紅包</p>
                   </div>
                 );
 
@@ -406,64 +453,64 @@ const App = () => {
                   : myEnrollment;
 
                 return (
-                  <div className="flex flex-col items-center bg-white pt-32 pb-10 px-10 rounded-[3rem] shadow-2xl border-4 border-yellow-500/40 relative animate-in zoom-in duration-700 mb-12">
-                    <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-yellow-500 text-red-900 px-6 py-2 rounded-full text-sm font-black shadow-xl tracking-widest z-50">您的專屬紅包</div>
+                  <div className="flex flex-col items-center bg-white pt-48 pb-10 px-10 rounded-[3rem] shadow-2xl border-4 border-yellow-500/40 relative animate-in zoom-in duration-700 mb-12">
+                    <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-yellow-500 text-red-900 px-8 py-2.5 rounded-full text-sm font-black shadow-xl tracking-widest z-50 border-2 border-yellow-200">您的專屬紅包</div>
                     <ResultEnvelope pData={pData} />
-                    <div className="mt-12 text-center bg-red-50 px-8 py-4 rounded-2xl border-2 border-red-100 w-full">
+                    <div className="mt-12 text-center bg-red-50 px-8 py-5 rounded-3xl border-2 border-red-100 w-full shadow-inner">
                       <p className="text-red-400 text-xs font-black mb-1 tracking-wider uppercase">您的配對組合</p>
                       <p className="font-black text-red-800 text-2xl tracking-widest">
-                        {myResult ? (myResult.isPair ? `${myResult.p1.name} ❤️ ${myResult.p2.name}` : `${myResult.p1.name} (幸運獨贏)`) : "等待管理者匹配中..."}
+                        {myResult ? (myResult.isPair ? `${myResult.p1.name} ❤️ ${myResult.p2.name}` : `${myResult.p1.name} (大吉獨贏)`) : "等待管理者揭曉中..."}
                       </p>
                     </div>
                   </div>
                 );
               })()}
 
-              {/* 【全體結果區】：即便管理者還沒按「生成配對」，但按了「顯示結果」，也會顯示名單 */}
+              {/* 【全體揭曉區】：空間感極大化 */}
               {gameConfig.showAllResults ? (
                 <div className="animate-in fade-in slide-in-from-bottom-12 duration-1000">
-                  <div className="flex items-center gap-6 mb-20">
+                  <div className="flex items-center gap-6 mb-24">
                     <div className="h-px bg-red-200 flex-1 shadow-sm"></div>
-                    <span className="text-red-500 text-sm font-black tracking-[0.3em] uppercase">全體名單已揭曉</span>
+                    <span className="text-red-500 text-sm font-black tracking-[0.4em] uppercase">命中注定揭曉</span>
                     <div className="h-px bg-red-200 flex-1 shadow-sm"></div>
                   </div>
                   
-                  <div className="space-y-[25rem]"> {/* 超大幅增加上下間距 */}
+                  <div className="space-y-[32rem]"> {/* 超大幅度拉開間距，避免滾動重疊感 */}
                     {finalPairs.length > 0 ? finalPairs.map((pair, idx) => (
-                      <div key={idx} className="bg-white/70 backdrop-blur-md rounded-[3rem] pt-32 pb-10 px-12 border-2 border-red-50 shadow-lg transition-all relative">
-                        <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-red-600 text-white px-6 py-1 rounded-full text-[10px] font-black shadow-md z-40">配對組合 #{idx+1}</div>
+                      <div key={idx} className="bg-white/80 backdrop-blur-md rounded-[3.5rem] pt-48 pb-12 px-12 border-2 border-red-100 shadow-2xl transition-all relative">
+                        <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-red-600 text-white px-8 py-2 rounded-full text-xs font-black shadow-xl z-40 border-2 border-red-400">緣分組合 #{idx+1}</div>
                         {pair.isPair ? (
-                          <div className="flex flex-col gap-24">
+                          <div className="flex flex-col gap-28">
                             <div className="grid grid-cols-2 gap-12 relative">
                               <ResultEnvelope pData={pair.p1} />
                               <ResultEnvelope pData={pair.p2} />
-                              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-5xl animate-pulse filter drop-shadow-md">❤️</div>
+                              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-6xl animate-pulse filter drop-shadow-md">❤️</div>
                             </div>
-                            <div className="text-center font-black text-red-900 text-2xl bg-gradient-to-r from-red-50 to-red-100 py-6 rounded-[2rem] border-2 border-red-200 shadow-inner">
+                            <div className="text-center font-black text-red-900 text-2xl bg-gradient-to-r from-red-50 to-red-100 py-8 rounded-[2.5rem] border-2 border-red-200 shadow-inner">
                               {pair.p1.name} & {pair.p2.name}
                             </div>
                           </div>
                         ) : (
-                          <div className="flex flex-col items-center gap-12">
+                          <div className="flex flex-col items-center gap-14">
                             <ResultEnvelope pData={pair.p1} />
-                            <div className="text-center font-black text-amber-800 bg-amber-50 px-12 py-4 rounded-full border-2 border-amber-200 shadow-sm text-2xl">
+                            <div className="text-center font-black text-amber-800 bg-amber-50 px-14 py-4 rounded-full border-2 border-amber-200 shadow-md text-2xl">
                               🌟 {pair.p1.name} 大吉大利
                             </div>
                           </div>
                         )}
                       </div>
                     )) : (
-                      <div className="text-center py-20 bg-white/40 rounded-3xl border-2 border-dashed border-red-200">
-                        <p className="text-red-300 font-bold">管理者尚未生成最終配對資料</p>
+                      <div className="text-center py-24 bg-white/40 rounded-[3rem] border-2 border-dashed border-red-300">
+                        <p className="text-red-400 font-black text-lg">等待管理者執行配對動作</p>
                       </div>
                     )}
                   </div>
                 </div>
               ) : (
-                <div className="text-center p-16 bg-white/40 rounded-[3rem] border-4 border-dotted border-red-200 shadow-inner">
-                  <Eye size={48} className="mx-auto text-red-200 mb-6" />
-                  <p className="text-red-300 font-black text-lg tracking-widest">全體配對結果尚未公開</p>
-                  <p className="text-xs text-red-200 mt-2 font-bold italic">請靜候管理者按下公佈按鈕！</p>
+                <div className="text-center p-20 bg-white/40 rounded-[4rem] border-4 border-dotted border-red-200 shadow-inner">
+                  <Eye size={56} className="mx-auto text-red-200 mb-8" />
+                  <p className="text-red-300 font-black text-xl tracking-widest uppercase">全體名單封印中</p>
+                  <p className="text-xs text-red-200 mt-3 font-bold">請關注管理者進行揭曉！</p>
                 </div>
               )}
             </div>
