@@ -397,7 +397,7 @@ const App = () => {
                     <div className="mt-14 text-center bg-red-50 px-8 py-8 rounded-[2.5rem] border-2 border-red-100 w-full shadow-inner relative z-10">
                       <p className="text-red-400 text-[10px] font-black tracking-[0.2em] uppercase opacity-70 mb-2">您的命中組合</p>
                       <p className="font-black text-red-800 text-3xl tracking-widest leading-relaxed">
-                        {myResult ? (myResult.isPair ? `${myResult.p1.name} ❤️ ${myResult.p2.name}` : `${myResult.p1.name} (大吉獨贏)`) : "等待揭曉中..."}
+                        {myResult ? (myResult.isPair ? `${myResult.p1.name} & ${myResult.p2.name}` : `${myResult.p1.name} (大吉獨贏)`) : "等待揭曉中..."}
                       </p>
                     </div>
                   </div>
