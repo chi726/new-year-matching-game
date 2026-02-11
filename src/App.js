@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Gift, ChevronRight, Trophy, AlertCircle, Settings, Users, Trash2, Lock, Eye, RotateCcw, CheckCircle
-} from 'lucide-react';
+  Gift, ChevronRight, Trophy, AlertCircle, Settings, Users, Trash2, Lock, Eye, EyeOff, RotateCcw, CheckCircle
+} from 'lucide-react'; // 修正：補上了漏掉的 EyeOff 引用
 import { initializeApp } from 'firebase/app';
 import { 
   getFirestore, collection, doc, setDoc, 
@@ -25,7 +25,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const appId = 'red-envelope-app'; 
 
-const ADMIN_PASSWORD = "2025"; 
+const ADMIN_PASSWORD = "2026"; 
 
 const App = () => {
   const [user, setUser] = useState(null);
