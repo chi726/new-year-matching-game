@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Gift, ChevronRight, Trophy, AlertCircle, Settings, Users, Trash2, Lock, Unlock, Eye, EyeOff, RotateCcw
-} from 'lucide-react';
+  Gift, ChevronRight, Trophy, AlertCircle, Settings, Users, Trash2, Lock, Eye, EyeOff, RotateCcw
+} from 'lucide-react'; // 修正：移除了未使用的 Unlock
 import { initializeApp } from 'firebase/app';
 import { 
   getFirestore, collection, doc, setDoc, 
@@ -21,7 +21,6 @@ const firebaseConfig = {
   measurementId: "G-YV7SYMEHRX"
 };
 
-
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -29,7 +28,7 @@ const db = getFirestore(app);
 const appId = 'red-envelope-app'; 
 
 // --- 遊戲常數 ---
-const ADMIN_PASSWORD = "2026"; 
+const ADMIN_PASSWORD = "2025"; 
 
 const App = () => {
   const [user, setUser] = useState(null);
@@ -49,7 +48,7 @@ const App = () => {
   const [adminPasswordInput, setAdminPasswordInput] = useState('');
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
 
-  // 1. 初始化驗證 - 針對生產環境簡化
+  // 1. 初始化驗證
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -318,13 +317,13 @@ const App = () => {
         {error && <div className="mb-6 p-4 bg-red-100 text-red-700 rounded-2xl text-sm font-bold flex items-center gap-2 shadow-md"><AlertCircle size={18} />{String(error)}</div>}
 
         {view === 'landing' && (
-          <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl text-center border-t-8 border-red-600 mt-4">
+          <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl text-center border-t-8 border-red-600 mt-4 animate-in fade-in zoom-in duration-500">
             <div className="text-8xl mb-8">🧧</div>
             <h2 className="text-2xl font-black text-red-900 mb-2">新年大吉！緣分紅包</h2>
             <p className="text-slate-500 text-sm mb-10">輸入暱稱，開啟新春好運</p>
             <form onSubmit={handleJoin} className="space-y-6">
               <input type="text" value={currentNickname} onChange={(e) => setCurrentNickname(e.target.value)} placeholder="輸入您的暱稱" className="w-full p-5 bg-orange-50 border-2 border-red-50 rounded-[1.5rem] text-center text-xl font-black outline-none focus:border-red-500 focus:bg-white shadow-inner" />
-              <button className="w-full bg-red-600 text-white font-black py-5 rounded-[1.5rem] shadow-xl hover:bg-red-700 active:scale-95 flex items-center justify-center gap-3 text-lg">
+              <button className="w-full bg-red-600 text-white font-black py-5 rounded-[1.5rem] shadow-xl hover:bg-red-700 active:scale-95 transition-all flex items-center justify-center gap-3 text-lg">
                 開始挑選 <ChevronRight size={24}/>
               </button>
             </form>
@@ -334,7 +333,7 @@ const App = () => {
         {view === 'picking' && (
           <div className="mt-4">
             <h3 className="text-center font-black text-red-800 text-xl mb-8">嗨 {currentNickname}，請挑一個好運位置</h3>
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-4 gap-4 animate-in slide-in-from-bottom-8 duration-500">
               {Array.from({ length: gameConfig.totalEnvelopes }).map((_, i) => {
                 const p = participants.find(p => p.envelopeIndex === i);
                 return <PickEnvelope key={i} index={i} isTaken={!!p} isMine={p?.uid === user?.uid} onPick={handlePick} />;
@@ -346,7 +345,7 @@ const App = () => {
         {view === 'admin' && (
           <div className="bg-white p-8 rounded-[2rem] shadow-2xl border-t-8 border-red-600 space-y-8 mt-4">
             {!isAdminAuthenticated ? (
-              <div className="text-center py-8">
+              <div className="text-center py-8 animate-in slide-in-from-top-4">
                 <div className="bg-red-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8 text-red-600 shadow-inner">
                   <Lock size={48} />
                 </div>
@@ -366,7 +365,7 @@ const App = () => {
                 </form>
               </div>
             ) : (
-              <div>
+              <div className="animate-in fade-in duration-500">
                 <div className="flex justify-between items-center mb-8 pb-3 border-b-2 border-red-50">
                   <h2 className="text-2xl font-black text-red-900 flex items-center gap-3"><Settings size={24} className="text-red-600" /> 管理中心</h2>
                   <button onClick={() => setIsAdminAuthenticated(false)} className="text-sm font-bold text-red-400 bg-red-50 px-3 py-1 rounded-full">退出</button>
@@ -387,9 +386,9 @@ const App = () => {
                   <p className="text-sm text-slate-400 font-black mb-4 flex items-center gap-2 px-2"><Users size={18}/> 報名清單 ({participants.length})</p>
                   <div className="max-h-60 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
                     {participants.map(p => (
-                      <div key={p.id} className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-200 hover:bg-white">
+                      <div key={p.id} className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-200 hover:bg-white transition-colors">
                         <span className="font-black text-slate-700 text-base">#{p.envelopeIndex+1} {p.name}</span>
-                        <button onClick={() => deleteParticipant(p.id)} className="text-red-300 hover:text-red-600 p-2 rounded-lg hover:bg-red-50">
+                        <button onClick={() => deleteParticipant(p.id)} className="text-red-300 hover:text-red-600 p-2 rounded-lg hover:bg-red-50 transition-all">
                           <Trash2 size={20} />
                         </button>
                       </div>
@@ -398,16 +397,16 @@ const App = () => {
                 </div>
 
                 <div className="space-y-4">
-                  <button onClick={handleMatch} disabled={participants.length < 2} className="w-full bg-red-600 text-white font-black py-5 rounded-[1.2rem] shadow-xl flex items-center justify-center gap-3 active:scale-95 text-lg">正式配對並生成金額</button>
+                  <button onClick={handleMatch} disabled={participants.length < 2} className="w-full bg-red-600 text-white font-black py-5 rounded-[1.2rem] shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all text-lg">正式配對並生成金額</button>
                   
                   <div className="flex gap-4">
                     <button 
                       onClick={() => updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'), { showAllResults: !gameConfig.showAllResults })} 
-                      className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-[1.2rem] font-black border-2 shadow-md ${gameConfig.showAllResults ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-slate-50 text-slate-500 border-slate-200'}`}
+                      className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-[1.2rem] font-black border-2 transition-all shadow-md ${gameConfig.showAllResults ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-slate-50 text-slate-500 border-slate-200'}`}
                     >
                       {gameConfig.showAllResults ? <><EyeOff size={22}/> 隱藏全體結果</> : <><Eye size={22}/> 公佈全體結果</>}
                     </button>
-                    <button onClick={resetGame} className="px-5 bg-white text-red-400 border-2 border-red-100 rounded-[1.2rem] flex items-center justify-center hover:bg-red-50 shadow-md"><RotateCcw size={22}/></button>
+                    <button onClick={resetGame} className="px-5 bg-white text-red-400 border-2 border-red-100 rounded-[1.2rem] flex items-center justify-center hover:bg-red-50 transition-all shadow-md"><RotateCcw size={22}/></button>
                   </div>
                 </div>
               </div>
@@ -426,6 +425,7 @@ const App = () => {
 
             {gameConfig.status === 'finished' ? (
               <div className="space-y-32">
+                {/* 使用者個人紅包 */}
                 {(() => {
                   const myPair = finalPairs.find(p => 
                     p.p1.uid === user?.uid || (p.isPair && p.p2.uid === user?.uid)
@@ -434,7 +434,7 @@ const App = () => {
                   
                   const myData = myPair.p1.uid === user?.uid ? myPair.p1 : myPair.p2;
                   return (
-                    <div className="flex flex-col items-center bg-white p-10 rounded-[3rem] shadow-2xl border-4 border-yellow-500/40 relative">
+                    <div className="flex flex-col items-center bg-white p-10 rounded-[3rem] shadow-2xl border-4 border-yellow-500/40 relative animate-in zoom-in duration-700">
                       <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-yellow-500 text-red-900 px-6 py-2 rounded-full text-sm font-black shadow-xl tracking-widest">您的專屬紅包</div>
                       <ResultEnvelope pData={myData} />
                       <div className="mt-8 text-center bg-red-50 px-8 py-3 rounded-2xl border-2 border-red-100">
@@ -457,7 +457,7 @@ const App = () => {
                     
                     <div className="space-y-48">
                       {finalPairs.map((pair, idx) => (
-                        <div key={idx} className="bg-white/70 backdrop-blur-md rounded-[3rem] p-12 border-2 border-red-50 shadow-lg">
+                        <div key={idx} className="bg-white/70 backdrop-blur-md rounded-[3rem] p-12 border-2 border-red-50 shadow-lg transition-all hover:scale-[1.02]">
                           {pair.isPair ? (
                             <div className="flex flex-col gap-16">
                               <div className="grid grid-cols-2 gap-10 relative">
@@ -485,6 +485,7 @@ const App = () => {
                   <div className="text-center p-16 bg-white/40 rounded-[3rem] border-4 border-dotted border-red-200 shadow-inner">
                     <Eye size={48} className="mx-auto text-red-200 mb-6" />
                     <p className="text-red-300 font-black text-lg tracking-widest">全體配對結果尚未揭曉</p>
+                    <p className="text-xs text-red-200 mt-3 font-bold italic">請靜候現場管理者公佈！</p>
                   </div>
                 )}
               </div>
