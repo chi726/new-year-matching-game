@@ -10,6 +10,7 @@ import {
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 
 // --- Firebase 配置 ---
+// 請填入您在 Firebase Console 取得的真實資訊
 const firebaseConfig = {
   apiKey: "AIzaSyDxRqhqlq0N-ABlE8LxPoP7a5YdHvDEqXQ",
   authDomain: "newyearmatchgame.firebaseapp.com",
@@ -24,7 +25,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'red-envelope-app'; 
+const appId = 'red-envelope-app'; 
 
 // --- 遊戲常數 ---
 const ADMIN_PASSWORD = "2026"; 
@@ -47,14 +48,11 @@ const App = () => {
   const [adminPasswordInput, setAdminPasswordInput] = useState('');
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
 
+  // 1. 初始化驗證 - 針對正式部署環境優化
   useEffect(() => {
     const initAuth = async () => {
       try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
-        }
+        await signInAnonymously(auth);
       } catch (err) {
         setError('身份驗證失敗，請重新整理');
       }
@@ -64,6 +62,7 @@ const App = () => {
     return () => unsubscribe();
   }, []);
 
+  // 2. 監聽雲端資料
   useEffect(() => {
     if (!user) return;
 
@@ -160,7 +159,7 @@ const App = () => {
     });
   };
 
-  // 管理者：刪除參加者 (加回來的函式)
+  // 管理者：刪除參加者
   const deleteParticipant = async (pId) => {
     if (!window.confirm('確定要刪除這位參加者嗎？刪除後對應的紅包位置將會釋放。')) return;
     try {
