@@ -10,7 +10,7 @@ import {
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 
 // --- Firebase 配置 ---
-// 請填入您在 Firebase Console 取得的真實資訊
+// 請務必填入您在 Firebase Console 取得的真實資訊
 const firebaseConfig = {
   apiKey: "AIzaSyDxRqhqlq0N-ABlE8LxPoP7a5YdHvDEqXQ",
   authDomain: "newyearmatchgame.firebaseapp.com",
@@ -127,13 +127,18 @@ const App = () => {
     setView('picking');
   };
 
+  // 當使用者選取紅包時，立即決定一個初始金額
   const handlePick = async (index) => {
     if (!user || participants.some(p => p.envelopeIndex === index)) return;
     try {
+      // 隨機生成一個 100 為單位的初始金額 (例如 500 ~ 3000)
+      const initialValue = (Math.floor(Math.random() * 26) + 5) * 100;
+
       await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'participants'), {
         name: currentNickname.trim(),
         envelopeIndex: index,
         uid: user.uid,
+        value: initialValue, // 金額現在先出來了！
         timestamp: Date.now()
       });
       setView('results');
@@ -172,12 +177,15 @@ const App = () => {
 
       for (let i = 0; i < shuffled.length; i += 2) {
         if (i + 1 < shuffled.length) {
+          // 重新計算配對金額，確保總和為 R
           const maxUnits = target / 100;
           const kUnits = Math.floor(Math.random() * (maxUnits - 1)) + 1; 
-          const k = kUnits * 100;
+          const val1 = kUnits * 100;
+          const val2 = target - val1;
+
           await addDoc(pairsColl, { 
-            p1: { ...shuffled[i], value: k }, 
-            p2: { ...shuffled[i+1], value: target - k }, 
+            p1: { ...shuffled[i], value: val1 }, 
+            p2: { ...shuffled[i+1], value: val2 }, 
             isPair: true 
           });
         } else {
@@ -231,7 +239,6 @@ const App = () => {
   };
 
   const ResultEnvelope = ({ pData, showName = true }) => {
-    // 檢查是否有配對後的 ID，否則使用 UID 作為臨時 ID
     const displayId = pData.id || pData.uid;
     const isRevealed = revealedIds.has(displayId);
     const cashItems = getCashDetails(pData.value);
@@ -243,23 +250,15 @@ const App = () => {
           className="relative h-44 w-full max-w-[160px] cursor-pointer"
           style={{ perspective: '1000px' }}
         >
-          {/* 內容物 */}
+          {/* 內容物 (鈔票與硬幣) */}
           <div className={`absolute inset-x-2 transition-all duration-700 flex flex-col items-center ${isRevealed ? '-translate-y-24 opacity-100 scale-110' : 'translate-y-0 opacity-0'}`}>
-            {pData.value ? (
-              <>
-                <div className="flex flex-wrap justify-center gap-1 mb-3 max-w-[140px]">
-                  {cashItems.map((item, i) => <CashIcon key={i} item={item} />)}
-                  {pData.value === '福' && <div className="text-5xl">🧧</div>}
-                </div>
-                <div className="bg-white px-4 py-1 rounded-full shadow-xl border-2 border-red-50 font-black text-red-600 whitespace-nowrap text-base">
-                  {pData.value === '福' ? '大吉大利' : `$${pData.value}`}
-                </div>
-              </>
-            ) : (
-              <div className="bg-white/90 px-4 py-2 rounded-2xl shadow-lg border border-red-200 text-red-400 font-bold text-xs animate-pulse">
-                等待開獎中...
-              </div>
-            )}
+            <div className="flex flex-wrap justify-center gap-1 mb-3 max-w-[140px]">
+              {cashItems.map((item, i) => <CashIcon key={i} item={item} />)}
+              {pData.value === '福' && <div className="text-5xl">🧧</div>}
+            </div>
+            <div className="bg-white px-4 py-1 rounded-full shadow-xl border-2 border-red-50 font-black text-red-600 whitespace-nowrap text-base shadow-red-200/50">
+              {pData.value === '福' ? '大吉大利' : `$${pData.value}`}
+            </div>
           </div>
 
           {/* 紅包本體 */}
@@ -386,22 +385,19 @@ const App = () => {
             </div>
 
             <div className="space-y-40">
-              {/* 【個人專屬紅包區】：只要選過紅包就顯示，不論管理者是否開獎 */}
+              {/* 【個人專屬紅包區】：選完就顯示，點擊即見錢 */}
               {(() => {
-                // 先找配對表是否有結果
                 const myResult = finalPairs.find(p => p.p1.uid === user?.uid || (p.isPair && p.p2.uid === user?.uid));
-                // 如果配對表沒結果，再找參加名單
                 const myEnrollment = participants.find(p => p.uid === user?.uid);
                 
                 if (!myEnrollment && !myResult) return (
-                  <div className="bg-white p-16 rounded-[4rem] shadow-xl text-center border-t-8 border-red-600 animate-pulse">
+                  <div className="bg-white p-16 rounded-[4rem] shadow-xl text-center border-t-8 border-red-600">
                     <div className="text-8xl mb-10">🧧</div>
                     <p className="font-black text-red-800 text-2xl tracking-widest">尚未參加</p>
-                    <p className="text-slate-400 text-sm mt-5">請先前往抽取頁面挑選紅包！</p>
                   </div>
                 );
 
-                // 決定顯示資料：優先顯示配對結果中的金額
+                // 金額現在會在選取時直接存入 participants，所以這裡直接抓取
                 const pData = myResult 
                   ? (myResult.p1.uid === user?.uid ? myResult.p1 : myResult.p2)
                   : myEnrollment;
@@ -413,14 +409,14 @@ const App = () => {
                     <div className="mt-8 text-center bg-red-50 px-8 py-3 rounded-2xl border-2 border-red-100 w-full">
                       <p className="text-red-400 text-xs font-black mb-1">配對組合</p>
                       <p className="font-black text-red-800 text-2xl tracking-widest">
-                        {myResult ? (myResult.isPair ? `${myResult.p1.name} ❤️ ${myResult.p2.name}` : `${myResult.p1.name} (幸運獨贏)`) : "等待開獎中..."}
+                        {myResult ? (myResult.isPair ? `${myResult.p1.name} ❤️ ${myResult.p2.name}` : `${myResult.p1.name} (幸運獨贏)`) : "等待管理者匹配中..."}
                       </p>
                     </div>
                   </div>
                 );
               })()}
 
-              {/* 【全體結果區】：由管理者開關控制，並加大組合間距 */}
+              {/* 【全體結果區】：超大間距 */}
               {gameConfig.status === 'finished' && gameConfig.showAllResults ? (
                 <div className="animate-in fade-in slide-in-from-bottom-12 duration-1000">
                   <div className="flex items-center gap-6 mb-20">
@@ -428,11 +424,12 @@ const App = () => {
                     <span className="text-red-500 text-sm font-black tracking-[0.3em] uppercase">全體名單</span>
                     <div className="h-px bg-red-200 flex-1 shadow-sm"></div>
                   </div>
-                  <div className="space-y-64"> {/* 加大配對組合間的距離 */}
+                  
+                  <div className="space-y-[20rem]"> {/* 超大幅增加上下間距 */}
                     {finalPairs.map((pair, idx) => (
-                      <div key={idx} className="bg-white/70 backdrop-blur-sm rounded-[3rem] p-12 border-2 border-red-50 shadow-lg transition-all hover:scale-[1.02]">
+                      <div key={idx} className="bg-white/70 backdrop-blur-md rounded-[3rem] p-12 border-2 border-red-50 shadow-lg transition-all">
                         {pair.isPair ? (
-                          <div className="flex flex-col gap-20">
+                          <div className="flex flex-col gap-24">
                             <div className="grid grid-cols-2 gap-12 relative">
                               <ResultEnvelope pData={pair.p1} />
                               <ResultEnvelope pData={pair.p2} />
@@ -457,7 +454,7 @@ const App = () => {
               ) : gameConfig.status === 'finished' && (
                 <div className="text-center p-16 bg-white/40 rounded-[3rem] border-4 border-dotted border-red-200 shadow-inner">
                   <Eye size={48} className="mx-auto text-red-200 mb-6" />
-                  <p className="text-red-300 font-black text-lg tracking-widest">全體名單尚未公開</p>
+                  <p className="text-red-300 font-black text-lg tracking-widest">全體配對結果尚未公開</p>
                 </div>
               )}
             </div>
