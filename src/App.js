@@ -396,9 +396,9 @@ const App = () => {
                 );
                 const pData = myResult ? (myResult.p1.uid === user?.uid ? myResult.p1 : myResult.p2) : myEnrollment;
                 return (
-                  <div className="max-w-md mx-auto flex flex-col items-center bg-white pt-24 pb-12 px-8 rounded-[3.5rem] shadow-2xl border-4 border-yellow-500/40 relative animate-in zoom-in">
+                  <div className="max-w-md mx-auto flex flex-col items-center bg-white pt-26 pb-12 px-8 rounded-[3.5rem] shadow-2xl border-4 border-yellow-500/40 relative animate-in zoom-in">
                     {/* 標籤上移一點點 */}
-                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-yellow-500 text-red-900 px-10 py-3 rounded-full text-sm font-black shadow-xl z-[100] border-4 border-yellow-200 ring-4 ring-yellow-600/10">您的專屬紅包</div>
+                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-yellow-500 text-red-900 px-10 py-3 rounded-full text-sm font-black shadow-xl z-[100] border-4 border-yellow-200 ring-4 ring-yellow-600/10">您的專屬紅包</div>
                     <ResultEnvelope pData={pData} />
                     <div className="mt-12 text-center bg-red-50 px-8 py-8 rounded-[2.5rem] border-2 border-red-100 w-full shadow-inner relative z-10">
                       <p className="text-red-400 text-[10px] font-black tracking-widest uppercase opacity-70 mb-2">您的命中組合</p>
