@@ -249,13 +249,13 @@ const App = () => {
     const isRevealed = revealedIds.has(displayId);
     const cashItems = getCashDetails(pData.value);
     
-    // 動態計算偏移高度：調整為更貼近紅包。基礎偏移 25px，每多一張紙鈔多 8px
+    // 動態計算偏移高度：基礎偏移 25px，每多一張紙鈔多 8px
     const dynamicOffset = isRevealed ? (25 + (cashItems.length * 8)) : 0;
 
     return (
       <div className="flex flex-col items-center w-full relative">
         <div onClick={() => toggleEnvelope(displayId)} className="relative h-44 w-full max-w-[150px] md:max-w-[170px] cursor-pointer" style={{ perspective: '1000px' }}>
-          {/* 內容物 (鈔票與金額) - 錢與紅包距離細微增加 */}
+          {/* 內容物 (鈔票與金額) */}
           <div 
             className={`absolute inset-x-0 transition-all duration-700 flex flex-col items-center z-10 ${isRevealed ? 'opacity-100 scale-110' : 'translate-y-0 opacity-0'}`}
             style={{ transform: isRevealed ? `translateY(-${dynamicOffset}px) scale(1.1)` : 'translateY(0)' }}
@@ -272,8 +272,7 @@ const App = () => {
           </div>
           {/* 紅包本體 */}
           <div className={`absolute inset-0 bg-red-600 rounded-xl border-2 border-yellow-500 shadow-xl z-20 flex flex-col items-center transition-transform duration-500 ${isRevealed ? 'translate-y-8 opacity-90 scale-95' : ''}`}>
-            <div className="absolute top-0 w-full h-1/4 bg-red-700 rounded-b-3xl border-b border-yellow-600/30"></div>
-            {/* 內容物排版：垂直置中佈局 */}
+            <div className="absolute top-0 w-full h-1/4 bg-red-700 rounded-b-3xl border-b border-yellow-600/30 shadow-inner"></div>
             <div className="h-full w-full flex flex-col items-center justify-center pt-8 space-y-2 px-2">
               <span className="text-yellow-400 font-black text-4xl leading-none drop-shadow-md">{Number(pData.envelopeIndex) + 1}</span>
               <div className="w-11 h-11 md:w-12 md:h-12 rounded-full bg-yellow-500 flex items-center justify-center text-red-700 font-serif text-xl border-2 border-yellow-200 shadow-inner font-bold">福</div>
@@ -336,8 +335,8 @@ const App = () => {
             {!isAdminAuthenticated ? (
               <div className="text-center py-8">
                 <div className="bg-red-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8 text-red-600 shadow-inner"><Lock size={48} /></div>
-                <form onSubmit={(e) => { e.preventDefault(); if (adminPasswordInput === ADMIN_PASSWORD) setIsAdminAuthenticated(true); else setError('管理密碼錯誤'); }} className="space-y-6">
-                  <input type="password" value={adminPasswordInput} onChange={(e) => setAdminPasswordInput(e.target.value)} placeholder="管理密碼" className="w-full p-4 border-2 border-red-100 rounded-[1.2rem] text-center text-xl font-bold outline-none focus:border-red-500" />
+                <form onSubmit={(e) => { e.preventDefault(); if (adminPasswordInput === ADMIN_PASSWORD) setIsAdminAuthenticated(true); else { setError('管理密碼錯誤'); setAdminPasswordInput(''); } }} className="space-y-6">
+                  <input type="password" value={adminPasswordInput} onChange={(e) => setAdminPasswordInput(e.target.value)} placeholder="管理密碼" className="w-full p-4 border-2 border-red-100 rounded-[1.2rem] text-center text-xl font-bold outline-none focus:border-red-500 shadow-inner" />
                   <button className="w-full bg-red-600 text-white font-black py-4 rounded-xl shadow-lg text-lg active:scale-95 transition-all">驗證身份</button>
                 </form>
               </div>
@@ -360,7 +359,7 @@ const App = () => {
                   <button onClick={handleMatchAndShow} className="w-full bg-gradient-to-r from-red-600 to-red-700 text-white font-black py-5 rounded-2xl shadow-xl active:scale-95 transition-all text-lg flex items-center justify-center gap-3 border-b-4 border-red-900"><Trophy size={24}/> 正式配對並公佈結果</button>
                   <div className="flex gap-3">
                     <button onClick={() => updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'), { showAllResults: !gameConfig.showAllResults })} className={`flex-1 py-3 rounded-2xl font-black border-2 transition-all shadow-md ${gameConfig.showAllResults ? 'bg-amber-50 text-amber-600 border-amber-200' : 'bg-white text-slate-300 border-slate-100'}`}>{gameConfig.showAllResults ? <><EyeOff size={18} className="inline mr-1"/> 隱藏結果</> : <><Eye size={18} className="inline mr-1"/> 顯示結果</>}</button>
-                    <button onClick={resetGame} className="px-5 bg-white text-red-300 border-2 border-red-50 rounded-2xl flex items-center justify-center hover:text-red-600 transition-colors shadow-sm"><RotateCcw size={20}/></button>
+                    <button onClick={resetGame} className="px-5 bg-white text-red-300 border-2 border-red-100 rounded-2xl flex items-center justify-center hover:text-red-600 transition-colors shadow-sm"><RotateCcw size={20}/></button>
                   </div>
                 </div>
                 <div className="max-h-48 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
@@ -385,7 +384,7 @@ const App = () => {
             </div>
 
             <div className="space-y-12">
-              {/* 個人專屬紅包 - 調整內距與標籤位置 */}
+              {/* 個人專屬紅包 - 增加 pt-28 以對應標籤上移 */}
               {(() => {
                 const myEnrollment = participants.find(p => p.uid === user?.uid);
                 const myResult = finalPairs.find(p => p.p1.uid === user?.uid || (p.isPair && p.p2.uid === user?.uid));
@@ -396,8 +395,8 @@ const App = () => {
                 );
                 const pData = myResult ? (myResult.p1.uid === user?.uid ? myResult.p1 : myResult.p2) : myEnrollment;
                 return (
-                  <div className="max-w-md mx-auto flex flex-col items-center bg-white pt-26 pb-12 px-8 rounded-[3.5rem] shadow-2xl border-4 border-yellow-500/40 relative animate-in zoom-in">
-                    {/* 標籤上移一點點 */}
+                  <div className="max-w-md mx-auto flex flex-col items-center bg-white pt-28 pb-12 px-8 rounded-[3.5rem] shadow-2xl border-4 border-yellow-500/40 relative animate-in zoom-in">
+                    {/* 標籤稍微上移一點點，保持呼吸感 */}
                     <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-yellow-500 text-red-900 px-10 py-3 rounded-full text-sm font-black shadow-xl z-[100] border-4 border-yellow-200 ring-4 ring-yellow-600/10">您的專屬紅包</div>
                     <ResultEnvelope pData={pData} />
                     <div className="mt-12 text-center bg-red-50 px-8 py-8 rounded-[2.5rem] border-2 border-red-100 w-full shadow-inner relative z-10">
@@ -420,8 +419,8 @@ const App = () => {
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-20">
                     {finalPairs.length > 0 ? finalPairs.map((pair, idx) => (
-                      <div key={idx} className="bg-white/80 backdrop-blur-sm rounded-[3.5rem] pt-24 pb-12 px-8 border-2 border-red-100 shadow-xl relative transition-all hover:scale-[1.02]">
-                        <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-red-600 text-white px-6 py-2 rounded-full text-xs font-black shadow-xl z-[100] border-2 border-red-400 tracking-widest uppercase">組合 #{idx+1}</div>
+                      <div key={idx} className="bg-white/80 backdrop-blur-sm rounded-[3.5rem] pt-28 pb-12 px-8 border-2 border-red-100 shadow-xl relative transition-all hover:scale-[1.02]">
+                        <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-red-600 text-white px-6 py-2 rounded-full text-xs font-black shadow-xl z-[100] border-2 border-red-400 tracking-widest uppercase">組合 #{idx+1}</div>
                         {pair.isPair ? (
                           <div className="flex flex-col gap-20 relative z-10">
                             <div className="grid grid-cols-2 gap-6 relative">
