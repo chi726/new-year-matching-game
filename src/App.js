@@ -300,7 +300,7 @@ const App = () => {
                     key={i} 
                     src={item.img} 
                     alt={`$${item.val}`} 
-                    className="w-10 h-6 object-cover rounded-[2px] shadow-md animate-bounce border border-gray-200" 
+                    className="w-10 h-6 object-fill bg-white rounded-[2px] shadow-md animate-bounce border border-gray-200" 
                   />
                 ) : (
                   <div key={i} className={`${item.color} w-6 h-6 rounded-full border flex items-center justify-center text-[8px] text-white font-black shadow-md animate-bounce`}>${item.val}</div>
