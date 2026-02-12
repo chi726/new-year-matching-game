@@ -124,9 +124,9 @@ const App = () => {
     let remaining = value;
     const items = [];
     const denominations = [
-      { val: 1000, type: 'bill', color: 'bg-blue-600 border-blue-400' },
-      { val: 500, type: 'bill', color: 'bg-orange-800 border-orange-600' },
-      { val: 100, type: 'bill', color: 'bg-red-500 border-red-400' },
+      { val: 1000, type: 'bill', img: '/picture/1000.jpg' },
+      { val: 500, type: 'bill', img: '/picture/500.jpg' },
+      { val: 100, type: 'bill', img: '/picture/100.jpg' },
       { val: 50, type: 'coin', color: 'bg-yellow-500 border-yellow-300' },
       { val: 10, type: 'coin', color: 'bg-slate-300 border-slate-100' },
       { val: 5, type: 'coin', color: 'bg-slate-400 border-slate-200' },
@@ -295,7 +295,16 @@ const App = () => {
           >
             <div className="flex flex-wrap justify-center gap-1 mb-1.5 max-w-[140px]">
               {cashItems.map((item, i) => (
-                <div key={i} className={`${item.color} ${item.type === 'bill' ? 'w-10 h-6' : 'w-6 h-6 rounded-full'} border flex items-center justify-center text-[8px] text-white font-black shadow-md animate-bounce`}>${item.val}</div>
+                item.type === 'bill' ? (
+                  <img 
+                    key={i} 
+                    src={item.img} 
+                    alt={`$${item.val}`} 
+                    className="w-10 h-6 object-cover rounded-[2px] shadow-md animate-bounce border border-gray-200" 
+                  />
+                ) : (
+                  <div key={i} className={`${item.color} w-6 h-6 rounded-full border flex items-center justify-center text-[8px] text-white font-black shadow-md animate-bounce`}>${item.val}</div>
+                )
               ))}
               {pData.value === '福' && <div className="text-5xl animate-bounce">🧧</div>}
             </div>
