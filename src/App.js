@@ -158,6 +158,7 @@ const App = () => {
       const total = Number(gameConfig.totalEnvelopes);
       const pool = [];
       const numPairs = Math.floor(total / 2);
+
       for (let i = 0; i < numPairs; i++) {
         const val1 = (Math.floor(Math.random() * (target / 100 - 1)) + 1) * 100;
         pool.push(val1, target - val1);
@@ -253,7 +254,6 @@ const App = () => {
     });
   };
 
-  // 加入 isPersonal 屬性，讓「專屬紅包」與「配對紅包」能擁有不同的距離設定
   const ResultEnvelope = ({ pData, showName = true, isPersonal = false }) => {
     const displayId = pData.id || pData.uid;
     const isRevealed = revealedIds.has(displayId);
@@ -343,7 +343,7 @@ const App = () => {
               {Array.from({ length: gameConfig.totalEnvelopes || 24 }).map((_, i) => {
                 const p = participants.find(p => p.envelopeIndex === i);
                 return (
-                  <button key={i} disabled={!!p} onClick={() => handlePick(i)} className={`relative h-24 md:h-28 rounded-xl border-2 transition-all flex flex-col items-center justify-center shadow-md active:scale-95 ${p?.uid === user?.uid ? 'bg-yellow-400 border-yellow-600 scale-105 z-10 shadow-lg' : p ? 'bg-gray-200 border-gray-300 opacity-40 grayscale' : 'bg-red-600 border-yellow-500 hover:scale-105'}`}>
+                  <button key={i} disabled={!!p} onClick={() => handlePick(i)} className={`relative w-full max-w-[76px] h-[104px] sm:max-w-none sm:h-24 md:h-28 mx-auto rounded-xl border-2 transition-all flex flex-col items-center justify-center shadow-md active:scale-95 ${p?.uid === user?.uid ? 'bg-yellow-400 border-yellow-600 scale-105 z-10 shadow-lg' : p ? 'bg-gray-200 border-gray-300 opacity-40 grayscale' : 'bg-red-600 border-yellow-500 hover:scale-105'}`}>
                     {!p && <div className="absolute top-0 inset-x-0 h-4 bg-red-700 rounded-b-2xl border-b border-yellow-600/30"></div>}
                     <span className={`text-[9px] ${p?.uid === user?.uid ? 'text-yellow-800' : 'text-yellow-200/50'}`}>No.</span>
                     <span className={`text-xl md:text-2xl font-black ${p?.uid === user?.uid ? 'text-red-700' : 'text-yellow-400'}`}>{i + 1}</span>
@@ -384,7 +384,7 @@ const App = () => {
                   <button onClick={handleMatchAndShow} className="w-full bg-gradient-to-r from-red-600 to-red-700 text-white font-black py-5 rounded-2xl shadow-xl active:scale-95 transition-all text-lg flex items-center justify-center gap-3 border-b-4 border-red-900"><Trophy size={24}/> 正式配對並公佈結果</button>
                   <div className="flex gap-3">
                     <button onClick={() => updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'), { showAllResults: !gameConfig.showAllResults })} className={`flex-1 py-3 rounded-2xl font-black border-2 transition-all shadow-md ${gameConfig.showAllResults ? 'bg-amber-50 text-amber-600 border-amber-200' : 'bg-white text-slate-300 border-slate-100'}`}>{gameConfig.showAllResults ? <><EyeOff size={18} className="inline mr-1"/> 隱藏結果</> : <><Eye size={18} className="inline mr-1"/> 顯示結果</>}</button>
-                    <button onClick={resetGame} className="px-5 bg-white text-red-300 border-2 border-red-50 rounded-2xl flex items-center justify-center hover:text-red-600 transition-colors shadow-sm"><RotateCcw size={20}/></button>
+                    <button onClick={resetGame} className="px-5 bg-white text-red-300 border-2 border-red-50 rounded-[1.2rem] flex items-center justify-center hover:text-red-600 transition-colors shadow-sm"><RotateCcw size={20}/></button>
                   </div>
                 </div>
                 <div className="max-h-48 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
@@ -423,9 +423,7 @@ const App = () => {
                 const pData = myResult ? (myResult.p1.uid === user?.uid ? myResult.p1 : myResult.p2) : myEnrollment;
                 return (
                   <div className="max-w-md mx-auto flex flex-col items-center bg-white pt-32 pb-12 px-8 rounded-[3.5rem] shadow-2xl border-4 border-yellow-500/40 relative animate-in zoom-in">
-                    {/* 標籤保持 -top-6 完全避開上方文字，確保不換行 */}
                     <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-yellow-500 text-red-900 px-10 py-3 rounded-full text-sm font-black shadow-xl z-[100] border-4 border-yellow-200 ring-4 ring-yellow-600/10 whitespace-nowrap">您的專屬紅包</div>
-                    {/* 傳入 isPersonal=true，讓金額更貼近紅包 */}
                     <ResultEnvelope pData={pData} isPersonal={true} />
                     <div className="mt-12 text-center bg-red-50 px-8 py-8 rounded-[2.5rem] border-2 border-red-100 w-full shadow-inner relative z-10">
                       <p className="text-red-400 text-[10px] font-black tracking-widest uppercase opacity-70 mb-2">您的命中組合</p>
@@ -452,7 +450,6 @@ const App = () => {
                         {pair.isPair ? (
                           <div className="flex flex-col gap-20 relative z-10">
                             <div className="grid grid-cols-2 gap-6 relative">
-                              {/* 傳入 isPersonal=false，讓金額稍微遠離紅包 */}
                               <ResultEnvelope pData={pair.p1} isPersonal={false} />
                               <ResultEnvelope pData={pair.p2} isPersonal={false} />
                             </div>
