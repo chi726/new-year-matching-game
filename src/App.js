@@ -158,17 +158,31 @@ const App = () => {
       const total = Number(gameConfig.totalEnvelopes);
       const pool = [];
       const numPairs = Math.floor(total / 2);
+      const usedValues = new Set(); // 記錄已使用的金額，確保組合不重複
+
       for (let i = 0; i < numPairs; i++) {
-        const val1 = (Math.floor(Math.random() * (target / 100 - 1)) + 1) * 100;
+        let val1;
+        let attempts = 0;
+        
+        // 隨機抽取金額，若抽到已存在的組合則重新抽取
+        do {
+          val1 = (Math.floor(Math.random() * (target / 100 - 1)) + 1) * 100;
+          attempts++;
+        } while ((usedValues.has(val1) || usedValues.has(target - val1)) && attempts < 1000);
+
+        // 記錄這次配對的兩個數字
+        usedValues.add(val1);
+        usedValues.add(target - val1);
         pool.push(val1, target - val1);
       }
+
       if (total % 2 !== 0) pool.push('福');
       const shuffledPool = pool.sort(() => Math.random() - 0.5);
       await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'), { 
         envelopePool: shuffledPool,
         status: 'collecting' 
       });
-      setSuccess('金額池重新生成成功！');
+      setSuccess('金額池重新生成成功！(已確保全場無重複組合)');
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) { setError('金額池生成失敗'); }
   };
@@ -337,7 +351,7 @@ const App = () => {
               {Array.from({ length: gameConfig.totalEnvelopes || 24 }).map((_, i) => {
                 const p = participants.find(p => p.envelopeIndex === i);
                 return (
-                  <button key={i} disabled={!!p} onClick={() => handlePick(i)} className={`relative h-24 md:h-28 rounded-xl border-2 transition-all flex flex-col items-center justify-center shadow-md active:scale-95 ${p?.uid === user?.uid ? 'bg-yellow-400 border-yellow-600 scale-105 z-10 shadow-lg' : p ? 'bg-gray-200 border-gray-300 opacity-40 grayscale' : 'bg-red-600 border-yellow-500 hover:scale-105'}`}>
+                  <button key={i} disabled={!!p} onClick={() => handlePick(i)} className={`relative w-full max-w-[88px] sm:max-w-none h-24 md:h-28 mx-auto rounded-xl border-2 transition-all flex flex-col items-center justify-center shadow-md active:scale-95 ${p?.uid === user?.uid ? 'bg-yellow-400 border-yellow-600 scale-105 z-10 shadow-lg' : p ? 'bg-gray-200 border-gray-300 opacity-40 grayscale' : 'bg-red-600 border-yellow-500 hover:scale-105'}`}>
                     {!p && <div className="absolute top-0 inset-x-0 h-4 bg-red-700 rounded-b-2xl border-b border-yellow-600/30"></div>}
                     <span className={`text-[9px] ${p?.uid === user?.uid ? 'text-yellow-800' : 'text-yellow-200/50'}`}>No.</span>
                     <span className={`text-xl md:text-2xl font-black ${p?.uid === user?.uid ? 'text-red-700' : 'text-yellow-400'}`}>{i + 1}</span>
