@@ -258,15 +258,19 @@ const App = () => {
     const isRevealed = revealedIds.has(displayId);
     const cashItems = getCashDetails(pData.value);
     
-    // 響應式高度偏移：手機版微調基礎偏移量(40px)使錢貼近紅包，電腦版維持25px
-    const baseOffset = isMobile ? 40 : 25;
-    const itemWeight = isMobile ? 9 : 8;
-    const dynamicOffset = isRevealed ? (baseOffset + (cashItems.length * itemWeight)) : 0;
+    // 解決高度不一的邏輯：
+    // 手機版基礎高度稍微拉開以避讓標籤。
+    // 核心修正：改用「視覺估算行數」來計算偏移量。
+    // 假設每行約放 3-4 個物件。
+    const estimatedRows = Math.ceil(cashItems.length / (isMobile ? 3 : 4));
+    const baseOffset = isMobile ? 32 : 25; 
+    const rowWeight = isMobile ? 12 : 10;
+    const dynamicOffset = isRevealed ? (baseOffset + (estimatedRows * rowWeight)) : 0;
 
     return (
       <div className="flex flex-col items-center w-full relative">
         <div onClick={() => toggleEnvelope(displayId)} className="relative h-44 w-full max-w-[150px] md:max-w-[170px] cursor-pointer" style={{ perspective: '1000px' }}>
-          {/* 內容物 (鈔票與金額) */}
+          {/* 內容物 (鈔票與金額) - 距離微調 */}
           <div 
             className={`absolute inset-x-0 transition-all duration-700 flex flex-col items-center z-10 ${isRevealed ? 'opacity-100 scale-110' : 'translate-y-0 opacity-0'}`}
             style={{ transform: isRevealed ? `translateY(-${dynamicOffset}px) scale(1.1)` : 'translateY(0)' }}
@@ -398,7 +402,7 @@ const App = () => {
             </div>
 
             <div className="space-y-12">
-              {/* 個人專屬紅包 - 手機版增加 pt 以騰出空間 */}
+              {/* 個人專屬紅包 - 手機版優化 pt 與標籤避讓 */}
               {(() => {
                 const myEnrollment = participants.find(p => p.uid === user?.uid);
                 const myResult = finalPairs.find(p => p.p1.uid === user?.uid || (p.isPair && p.p2.uid === user?.uid));
@@ -409,9 +413,9 @@ const App = () => {
                 );
                 const pData = myResult ? (myResult.p1.uid === user?.uid ? myResult.p1 : myResult.p2) : myEnrollment;
                 return (
-                  <div className="max-w-md mx-auto flex flex-col items-center bg-white pt-36 md:pt-28 pb-12 px-8 rounded-[3.5rem] shadow-2xl border-4 border-yellow-500/40 relative animate-in zoom-in">
+                  <div className="max-w-md mx-auto flex flex-col items-center bg-white pt-28 pb-12 px-8 rounded-[3.5rem] shadow-2xl border-4 border-yellow-500/40 relative animate-in zoom-in">
                     {/* 標籤上移且不換行 */}
-                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-yellow-500 text-red-900 px-10 py-3 rounded-full text-sm font-black shadow-xl z-[100] border-4 border-yellow-200 ring-4 ring-yellow-600/10 whitespace-nowrap">您的專屬紅包</div>
+                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-yellow-500 text-red-900 px-10 py-3 rounded-full text-sm font-black shadow-xl z-[100] border-4 border-yellow-200 ring-4 ring-yellow-600/10 whitespace-nowrap">您的專屬紅包</div>
                     <ResultEnvelope pData={pData} />
                     <div className="mt-12 text-center bg-red-50 px-8 py-8 rounded-[2.5rem] border-2 border-red-100 w-full shadow-inner relative z-10">
                       <p className="text-red-400 text-[10px] font-black tracking-widest uppercase opacity-70 mb-2">您的命中組合</p>
@@ -423,7 +427,7 @@ const App = () => {
                 );
               })()}
 
-              {/* 全體名單 - 手機版增加 pt 以騰出空間 */}
+              {/* 全體名單 - 雙欄響應式佈局 */}
               {gameConfig.showAllResults ? (
                 <div className="animate-in fade-in slide-in-from-bottom-12 mt-12">
                   <div className="flex items-center gap-6 mb-20 px-4">
@@ -433,7 +437,7 @@ const App = () => {
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-24">
                     {finalPairs.length > 0 ? finalPairs.map((pair, idx) => (
-                      <div key={idx} className="bg-white/80 backdrop-blur-sm rounded-[4rem] pt-36 md:pt-28 pb-14 px-8 border-2 border-red-100 shadow-2xl relative transition-all hover:scale-[1.02]">
+                      <div key={idx} className="bg-white/80 backdrop-blur-sm rounded-[4rem] pt-28 pb-14 px-8 border-2 border-red-100 shadow-2xl relative transition-all hover:scale-[1.02]">
                         <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-red-600 text-white px-6 py-2 rounded-full text-xs font-black shadow-xl z-[100] border-2 border-red-400 tracking-widest uppercase whitespace-nowrap">組合 #{idx+1}</div>
                         {pair.isPair ? (
                           <div className="flex flex-col gap-20 relative z-10">
