@@ -25,7 +25,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const appId = 'red-envelope-app'; 
 
-const ADMIN_PASSWORD = "版主是我的"; 
+const ADMIN_PASSWORD = "banzhushiwode"; 
 
 const App = () => {
   const [user, setUser] = useState(null);
