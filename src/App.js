@@ -253,19 +253,26 @@ const App = () => {
     });
   };
 
-  const ResultEnvelope = ({ pData, showName = true }) => {
+  // 加入 isPersonal 屬性，讓「專屬紅包」與「配對紅包」能擁有不同的距離設定
+  const ResultEnvelope = ({ pData, showName = true, isPersonal = false }) => {
     const displayId = pData.id || pData.uid;
     const isRevealed = revealedIds.has(displayId);
     const cashItems = getCashDetails(pData.value);
     
-    // 解決高度不一與遮擋問題：
-    // 使用「視覺估計行數」來確保同排高度一致
+    // 視覺估計行數
     const itemsPerRow = isMobile ? 3 : 4;
     const estimatedRows = Math.ceil(cashItems.length / itemsPerRow);
     
-    // 微調偏移：
-    // baseOffset 增加確保金額 ($3400等) 完全跨過紅包頂部不被吃掉。
-    const baseOffset = isMobile ? 48 : 35; 
+    // 獨立計算不同情境的基礎高度
+    let baseOffset = 0;
+    if (isPersonal) {
+      // 專屬紅包：數字離紅包近一點點
+      baseOffset = isMobile ? 36 : 26; 
+    } else {
+      // 配對紅包：紅包跟數字中間距離再開一點點
+      baseOffset = isMobile ? 56 : 40; 
+    }
+    
     const rowWeight = isMobile ? 18 : 14;
     const dynamicOffset = isRevealed ? (baseOffset + (estimatedRows * rowWeight)) : 0;
 
@@ -290,7 +297,7 @@ const App = () => {
           {/* 紅包本體 */}
           <div className={`absolute inset-0 bg-red-600 rounded-xl border-2 border-yellow-500 shadow-xl z-20 flex flex-col items-center justify-center transition-transform duration-500 ${isRevealed ? 'translate-y-8 opacity-90 scale-95' : ''}`}>
             <div className="absolute top-0 w-full h-1/4 bg-red-700 rounded-b-3xl border-b border-yellow-600/30 shadow-inner"></div>
-            {/* 修正：優化內部垂直置中佈局 */}
+            {/* 內部垂直置中 */}
             <div className="h-full w-full flex flex-col items-center justify-center pt-5 space-y-2 px-2">
               <span className="text-yellow-400 font-black text-4xl leading-none drop-shadow-sm">{Number(pData.envelopeIndex) + 1}</span>
               <div className="w-11 h-11 md:w-12 md:h-12 rounded-full bg-yellow-500 flex items-center justify-center text-red-700 font-serif text-xl border-2 border-yellow-200 shadow-inner font-bold">福</div>
@@ -377,14 +384,14 @@ const App = () => {
                   <button onClick={handleMatchAndShow} className="w-full bg-gradient-to-r from-red-600 to-red-700 text-white font-black py-5 rounded-2xl shadow-xl active:scale-95 transition-all text-lg flex items-center justify-center gap-3 border-b-4 border-red-900"><Trophy size={24}/> 正式配對並公佈結果</button>
                   <div className="flex gap-3">
                     <button onClick={() => updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'), { showAllResults: !gameConfig.showAllResults })} className={`flex-1 py-3 rounded-2xl font-black border-2 transition-all shadow-md ${gameConfig.showAllResults ? 'bg-amber-50 text-amber-600 border-amber-200' : 'bg-white text-slate-300 border-slate-100'}`}>{gameConfig.showAllResults ? <><EyeOff size={18} className="inline mr-1"/> 隱藏結果</> : <><Eye size={18} className="inline mr-1"/> 顯示結果</>}</button>
-                    <button onClick={resetGame} className="px-5 bg-white text-red-300 border-2 border-red-100 rounded-[1.2rem] flex items-center justify-center hover:text-red-600 transition-colors shadow-sm"><RotateCcw size={20}/></button>
+                    <button onClick={resetGame} className="px-5 bg-white text-red-300 border-2 border-red-50 rounded-2xl flex items-center justify-center hover:text-red-600 transition-colors shadow-sm"><RotateCcw size={20}/></button>
                   </div>
                 </div>
                 <div className="max-h-48 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
                   <p className="text-xs text-slate-400 font-bold mb-2 uppercase">參加名單 ({participants.length})</p>
                   {participants.map(p => (
                     <div key={p.id} className="flex justify-between items-center p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs shadow-sm">
-                      <span className="font-bold text-slate-700">#{p.envelopeIndex+1} {p.name} (${p.value})</span>
+                      <span className="font-bold text-slate-700">#{p.envelopeIndex+1} {p.name}</span>
                       <button onClick={() => deleteParticipant(p.id)} className="text-red-200 hover:text-red-500 transition-colors"><Trash2 size={16}/></button>
                     </div>
                   ))}
@@ -396,7 +403,7 @@ const App = () => {
 
         {view === 'results' && (
           <div className="pb-24 animate-in fade-in">
-            <div className="text-center mb-14">
+            <div className="text-center mb-10">
               <h2 className="text-3xl font-black text-red-800 tracking-widest uppercase">緣分揭曉</h2>
               <p className="text-[10px] sm:text-sm text-slate-400 mt-2 font-bold tracking-widest whitespace-nowrap overflow-hidden text-ellipsis px-4">
                 ✨ 點擊紅包查看金額，再次點擊收起
@@ -416,9 +423,10 @@ const App = () => {
                 const pData = myResult ? (myResult.p1.uid === user?.uid ? myResult.p1 : myResult.p2) : myEnrollment;
                 return (
                   <div className="max-w-md mx-auto flex flex-col items-center bg-white pt-32 pb-12 px-8 rounded-[3.5rem] shadow-2xl border-4 border-yellow-500/40 relative animate-in zoom-in">
-                    {/* 標籤往下移 (-top-6) 完全避開上方文字重疊 */}
+                    {/* 標籤保持 -top-6 完全避開上方文字，確保不換行 */}
                     <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-yellow-500 text-red-900 px-10 py-3 rounded-full text-sm font-black shadow-xl z-[100] border-4 border-yellow-200 ring-4 ring-yellow-600/10 whitespace-nowrap">您的專屬紅包</div>
-                    <ResultEnvelope pData={pData} />
+                    {/* 傳入 isPersonal=true，讓金額更貼近紅包 */}
+                    <ResultEnvelope pData={pData} isPersonal={true} />
                     <div className="mt-12 text-center bg-red-50 px-8 py-8 rounded-[2.5rem] border-2 border-red-100 w-full shadow-inner relative z-10">
                       <p className="text-red-400 text-[10px] font-black tracking-widest uppercase opacity-70 mb-2">您的命中組合</p>
                       <p className="font-black text-red-800 text-2xl md:text-3xl tracking-widest leading-tight">
@@ -439,13 +447,14 @@ const App = () => {
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-24">
                     {finalPairs.length > 0 ? finalPairs.map((pair, idx) => (
-                      <div key={idx} className="bg-white/80 backdrop-blur-sm rounded-[4rem] pt-32 pb-14 px-8 border-2 border-red-100 shadow-2xl relative transition-all hover:scale-[1.02]">
+                      <div key={idx} className="bg-white/80 backdrop-blur-sm rounded-[4rem] pt-36 pb-14 px-8 border-2 border-red-100 shadow-2xl relative transition-all hover:scale-[1.02]">
                         <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-red-600 text-white px-8 py-2 rounded-full text-xs font-black shadow-xl z-[100] border-2 border-red-400 tracking-widest uppercase whitespace-nowrap">組合 #{idx+1}</div>
                         {pair.isPair ? (
                           <div className="flex flex-col gap-20 relative z-10">
                             <div className="grid grid-cols-2 gap-6 relative">
-                              <ResultEnvelope pData={pair.p1} />
-                              <ResultEnvelope pData={pair.p2} />
+                              {/* 傳入 isPersonal=false，讓金額稍微遠離紅包 */}
+                              <ResultEnvelope pData={pair.p1} isPersonal={false} />
+                              <ResultEnvelope pData={pair.p2} isPersonal={false} />
                             </div>
                             <div className="text-center font-black text-red-900 text-2xl md:text-3xl bg-gradient-to-r from-red-50 to-red-100 py-8 rounded-[2.5rem] border-2 border-red-200 shadow-inner">
                               {pair.p1.name} & {pair.p2.name}
@@ -453,7 +462,7 @@ const App = () => {
                           </div>
                         ) : (
                           <div className="flex flex-col items-center gap-16 relative z-10">
-                            <ResultEnvelope pData={pair.p1} />
+                            <ResultEnvelope pData={pair.p1} isPersonal={false} />
                             <div className="text-center font-black text-amber-800 bg-amber-50 px-16 py-6 rounded-full border-2 border-amber-200 shadow-md text-2xl tracking-widest uppercase">🌟 {pair.p1.name} 大吉大利</div>
                           </div>
                         )}
