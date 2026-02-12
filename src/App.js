@@ -158,7 +158,6 @@ const App = () => {
       const total = Number(gameConfig.totalEnvelopes);
       const pool = [];
       const numPairs = Math.floor(total / 2);
-
       for (let i = 0; i < numPairs; i++) {
         const val1 = (Math.floor(Math.random() * (target / 100 - 1)) + 1) * 100;
         pool.push(val1, target - val1);
@@ -259,17 +258,13 @@ const App = () => {
     const isRevealed = revealedIds.has(displayId);
     const cashItems = getCashDetails(pData.value);
     
-    // 視覺估計行數
     const itemsPerRow = isMobile ? 3 : 4;
     const estimatedRows = Math.ceil(cashItems.length / itemsPerRow);
     
-    // 獨立計算不同情境的基礎高度
     let baseOffset = 0;
     if (isPersonal) {
-      // 專屬紅包：數字離紅包近一點點
       baseOffset = isMobile ? 36 : 26; 
     } else {
-      // 配對紅包：紅包跟數字中間距離再開一點點
       baseOffset = isMobile ? 56 : 40; 
     }
     
@@ -279,7 +274,7 @@ const App = () => {
     return (
       <div className="flex flex-col items-center w-full relative">
         <div onClick={() => toggleEnvelope(displayId)} className="relative h-44 w-full max-w-[150px] md:max-w-[170px] cursor-pointer" style={{ perspective: '1000px' }}>
-          {/* 內容物 (鈔票與金額) */}
+          {/* 內容物 */}
           <div 
             className={`absolute inset-x-0 transition-all duration-700 flex flex-col items-center z-10 ${isRevealed ? 'opacity-100 scale-110' : 'translate-y-0 opacity-0'}`}
             style={{ transform: isRevealed ? `translateY(-${dynamicOffset}px) scale(1.1)` : 'translateY(0)' }}
@@ -297,7 +292,6 @@ const App = () => {
           {/* 紅包本體 */}
           <div className={`absolute inset-0 bg-red-600 rounded-xl border-2 border-yellow-500 shadow-xl z-20 flex flex-col items-center justify-center transition-transform duration-500 ${isRevealed ? 'translate-y-8 opacity-90 scale-95' : ''}`}>
             <div className="absolute top-0 w-full h-1/4 bg-red-700 rounded-b-3xl border-b border-yellow-600/30 shadow-inner"></div>
-            {/* 內部垂直置中 */}
             <div className="h-full w-full flex flex-col items-center justify-center pt-5 space-y-2 px-2">
               <span className="text-yellow-400 font-black text-4xl leading-none drop-shadow-sm">{Number(pData.envelopeIndex) + 1}</span>
               <div className="w-11 h-11 md:w-12 md:h-12 rounded-full bg-yellow-500 flex items-center justify-center text-red-700 font-serif text-xl border-2 border-yellow-200 shadow-inner font-bold">福</div>
@@ -339,7 +333,8 @@ const App = () => {
         {view === 'picking' && (
           <div className="max-w-4xl mx-auto mt-4 animate-in slide-in-from-bottom-8">
             <h3 className="text-center font-black text-red-800 text-xl mb-10 tracking-widest">嗨 {currentNickname}，請挑一個好運位置</h3>
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3 md:gap-4">
+            {/* 新增 w-fit mx-auto sm:w-full 使手機版網格強制置中 */}
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3 md:gap-4 w-fit mx-auto sm:w-full">
               {Array.from({ length: gameConfig.totalEnvelopes || 24 }).map((_, i) => {
                 const p = participants.find(p => p.envelopeIndex === i);
                 return (
@@ -435,7 +430,7 @@ const App = () => {
                 );
               })()}
 
-              {/* 全體名單 - 雙欄佈局 */}
+              {/* 全體名單 */}
               {gameConfig.showAllResults ? (
                 <div className="animate-in fade-in slide-in-from-bottom-12 mt-12">
                   <div className="flex items-center gap-6 mb-20 px-4">
@@ -472,10 +467,10 @@ const App = () => {
                   </div>
                 </div>
               ) : (
-                <div className="max-w-md mx-auto text-center p-24 bg-white/40 rounded-[4rem] border-4 border-dotted border-red-200 shadow-inner animate-in fade-in">
-                  <EyeOff size={72} className="mx-auto text-red-200 mb-8 font-black" />
-                  <p className="text-red-300 font-black text-2xl tracking-[0.4em] uppercase whitespace-nowrap">全體名單封印中</p>
-                  <p className="text-xs text-red-200 mt-5 font-bold tracking-[0.2em] italic whitespace-nowrap">請關注管理者進行大揭曉！</p>
+                <div className="max-w-md mx-auto flex flex-col items-center justify-center py-20 px-4 md:p-24 bg-white/40 rounded-[4rem] border-4 border-dotted border-red-200 shadow-inner animate-in fade-in overflow-hidden">
+                  <EyeOff size={72} className="text-red-200 mb-6 md:mb-8 font-black" />
+                  <p className="text-red-300 font-black text-xl md:text-2xl tracking-[0.2em] md:tracking-[0.4em] uppercase whitespace-nowrap">全體名單封印中</p>
+                  <p className="text-[10px] md:text-xs text-red-200 mt-4 md:mt-5 font-bold tracking-[0.1em] md:tracking-[0.2em] italic whitespace-nowrap">請關注管理者進行大揭曉！</p>
                 </div>
               )}
             </div>
