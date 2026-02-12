@@ -333,12 +333,11 @@ const App = () => {
         {view === 'picking' && (
           <div className="max-w-4xl mx-auto mt-4 animate-in slide-in-from-bottom-8">
             <h3 className="text-center font-black text-red-800 text-xl mb-10 tracking-widest">嗨 {currentNickname}，請挑一個好運位置</h3>
-            {/* 新增 w-fit mx-auto sm:w-full 使手機版網格強制置中 */}
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3 md:gap-4 w-fit mx-auto sm:w-full">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3 md:gap-4">
               {Array.from({ length: gameConfig.totalEnvelopes || 24 }).map((_, i) => {
                 const p = participants.find(p => p.envelopeIndex === i);
                 return (
-                  <button key={i} disabled={!!p} onClick={() => handlePick(i)} className={`relative w-full max-w-[76px] h-[104px] sm:max-w-none sm:h-24 md:h-28 mx-auto rounded-xl border-2 transition-all flex flex-col items-center justify-center shadow-md active:scale-95 ${p?.uid === user?.uid ? 'bg-yellow-400 border-yellow-600 scale-105 z-10 shadow-lg' : p ? 'bg-gray-200 border-gray-300 opacity-40 grayscale' : 'bg-red-600 border-yellow-500 hover:scale-105'}`}>
+                  <button key={i} disabled={!!p} onClick={() => handlePick(i)} className={`relative h-24 md:h-28 rounded-xl border-2 transition-all flex flex-col items-center justify-center shadow-md active:scale-95 ${p?.uid === user?.uid ? 'bg-yellow-400 border-yellow-600 scale-105 z-10 shadow-lg' : p ? 'bg-gray-200 border-gray-300 opacity-40 grayscale' : 'bg-red-600 border-yellow-500 hover:scale-105'}`}>
                     {!p && <div className="absolute top-0 inset-x-0 h-4 bg-red-700 rounded-b-2xl border-b border-yellow-600/30"></div>}
                     <span className={`text-[9px] ${p?.uid === user?.uid ? 'text-yellow-800' : 'text-yellow-200/50'}`}>No.</span>
                     <span className={`text-xl md:text-2xl font-black ${p?.uid === user?.uid ? 'text-red-700' : 'text-yellow-400'}`}>{i + 1}</span>
