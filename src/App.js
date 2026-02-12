@@ -134,8 +134,10 @@ const App = () => {
     ];
     denominations.forEach(d => {
       const count = Math.floor(remaining / d.val);
-      const displayCount = d.type === 'bill' ? Math.min(count, 3) : Math.min(count, 4);
-      for (let i = 0; i < displayCount; i++) items.push(d);
+      // 修正：完全解除數量限制，讓金額精準對應紙鈔數量
+      for (let i = 0; i < count; i++) {
+        items.push(d);
+      }
       remaining %= d.val;
     });
     return items;
@@ -272,9 +274,11 @@ const App = () => {
     const isRevealed = revealedIds.has(displayId);
     const cashItems = getCashDetails(pData.value);
     
+    // 視覺估計行數
     const itemsPerRow = isMobile ? 3 : 4;
     const estimatedRows = Math.ceil(cashItems.length / itemsPerRow);
     
+    // 獨立計算不同情境的基礎高度
     let baseOffset = 0;
     if (isPersonal) {
       baseOffset = isMobile ? 36 : 26; 
@@ -288,7 +292,7 @@ const App = () => {
     return (
       <div className="flex flex-col items-center w-full relative">
         <div onClick={() => toggleEnvelope(displayId)} className="relative h-44 w-full max-w-[150px] md:max-w-[170px] cursor-pointer" style={{ perspective: '1000px' }}>
-          {/* 內容物 */}
+          {/* 內容物 (鈔票與金額) */}
           <div 
             className={`absolute inset-x-0 transition-all duration-700 flex flex-col items-center z-10 ${isRevealed ? 'opacity-100 scale-110' : 'translate-y-0 opacity-0'}`}
             style={{ transform: isRevealed ? `translateY(-${dynamicOffset}px) scale(1.1)` : 'translateY(0)' }}
@@ -315,6 +319,7 @@ const App = () => {
           {/* 紅包本體 */}
           <div className={`absolute inset-0 bg-red-600 rounded-xl border-2 border-yellow-500 shadow-xl z-20 flex flex-col items-center justify-center transition-transform duration-500 ${isRevealed ? 'translate-y-8 opacity-90 scale-95' : ''}`}>
             <div className="absolute top-0 w-full h-1/4 bg-red-700 rounded-b-3xl border-b border-yellow-600/30 shadow-inner"></div>
+            {/* 內部垂直置中 */}
             <div className="h-full w-full flex flex-col items-center justify-center pt-5 space-y-2 px-2">
               <span className="text-yellow-400 font-black text-4xl leading-none drop-shadow-sm">{Number(pData.envelopeIndex) + 1}</span>
               <div className="w-11 h-11 md:w-12 md:h-12 rounded-full bg-yellow-500 flex items-center justify-center text-red-700 font-serif text-xl border-2 border-yellow-200 shadow-inner font-bold">福</div>
@@ -360,7 +365,7 @@ const App = () => {
               {Array.from({ length: gameConfig.totalEnvelopes || 24 }).map((_, i) => {
                 const p = participants.find(p => p.envelopeIndex === i);
                 return (
-                  <button key={i} disabled={!!p} onClick={() => handlePick(i)} className={`relative w-full max-w-[88px] sm:max-w-none h-24 md:h-28 mx-auto rounded-xl border-2 transition-all flex flex-col items-center justify-center shadow-md active:scale-95 ${p?.uid === user?.uid ? 'bg-yellow-400 border-yellow-600 scale-105 z-10 shadow-lg' : p ? 'bg-gray-200 border-gray-300 opacity-40 grayscale' : 'bg-red-600 border-yellow-500 hover:scale-105'}`}>
+                  <button key={i} disabled={!!p} onClick={() => handlePick(i)} className={`relative h-24 md:h-28 mx-auto w-full rounded-xl border-2 transition-all flex flex-col items-center justify-center shadow-md active:scale-95 ${p?.uid === user?.uid ? 'bg-yellow-400 border-yellow-600 scale-105 z-10 shadow-lg' : p ? 'bg-gray-200 border-gray-300 opacity-40 grayscale' : 'bg-red-600 border-yellow-500 hover:scale-105'}`}>
                     {!p && <div className="absolute top-0 inset-x-0 h-4 bg-red-700 rounded-b-2xl border-b border-yellow-600/30"></div>}
                     <span className={`text-[9px] ${p?.uid === user?.uid ? 'text-yellow-800' : 'text-yellow-200/50'}`}>No.</span>
                     <span className={`text-xl md:text-2xl font-black ${p?.uid === user?.uid ? 'text-red-700' : 'text-yellow-400'}`}>{i + 1}</span>
@@ -452,7 +457,7 @@ const App = () => {
                 );
               })()}
 
-              {/* 全體名單 */}
+              {/* 全體名單 - 雙欄佈局 */}
               {gameConfig.showAllResults ? (
                 <div className="animate-in fade-in slide-in-from-bottom-12 mt-12">
                   <div className="flex items-center gap-6 mb-20 px-4">
