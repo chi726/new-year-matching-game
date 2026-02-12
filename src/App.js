@@ -258,9 +258,9 @@ const App = () => {
     const isRevealed = revealedIds.has(displayId);
     const cashItems = getCashDetails(pData.value);
     
-    // 響應式高度偏移：手機版增加基礎偏移量(50px)以避免擋到標籤，電腦版維持25px
-    const baseOffset = isMobile ? 50 : 25;
-    const itemWeight = isMobile ? 10 : 8;
+    // 響應式高度偏移：手機版微調基礎偏移量(40px)使錢貼近紅包，電腦版維持25px
+    const baseOffset = isMobile ? 40 : 25;
+    const itemWeight = isMobile ? 9 : 8;
     const dynamicOffset = isRevealed ? (baseOffset + (cashItems.length * itemWeight)) : 0;
 
     return (
@@ -282,7 +282,7 @@ const App = () => {
             </div>
           </div>
           {/* 紅包本體 */}
-          <div className={`absolute inset-0 bg-red-600 rounded-xl border-2 border-yellow-500 shadow-xl z-20 flex flex-col items-center transition-transform duration-500 ${isRevealed ? 'translate-y-8 opacity-90 scale-95' : ''}`}>
+          <div className={`absolute inset-0 bg-red-600 rounded-xl border-2 border-yellow-500 shadow-xl z-20 flex flex-col items-center justify-center transition-transform duration-500 ${isRevealed ? 'translate-y-8 opacity-90 scale-95' : ''}`}>
             <div className="absolute top-0 w-full h-1/4 bg-red-700 rounded-b-3xl border-b border-yellow-600/30 shadow-inner"></div>
             {/* 內容物排版：垂直置中佈局 */}
             <div className="h-full w-full flex flex-col items-center justify-center pt-8 space-y-2 px-2">
@@ -371,7 +371,7 @@ const App = () => {
                   <button onClick={handleMatchAndShow} className="w-full bg-gradient-to-r from-red-600 to-red-700 text-white font-black py-5 rounded-2xl shadow-xl active:scale-95 transition-all text-lg flex items-center justify-center gap-3 border-b-4 border-red-900"><Trophy size={24}/> 正式配對並公佈結果</button>
                   <div className="flex gap-3">
                     <button onClick={() => updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'), { showAllResults: !gameConfig.showAllResults })} className={`flex-1 py-3 rounded-2xl font-black border-2 transition-all shadow-md ${gameConfig.showAllResults ? 'bg-amber-50 text-amber-600 border-amber-200' : 'bg-white text-slate-300 border-slate-100'}`}>{gameConfig.showAllResults ? <><EyeOff size={18} className="inline mr-1"/> 隱藏結果</> : <><Eye size={18} className="inline mr-1"/> 顯示結果</>}</button>
-                    <button onClick={resetGame} className="px-5 bg-white text-red-300 border-2 border-red-100 rounded-2xl flex items-center justify-center hover:text-red-600 transition-colors shadow-sm"><RotateCcw size={20}/></button>
+                    <button onClick={resetGame} className="px-5 bg-white text-red-300 border-2 border-red-100 rounded-[1.2rem] flex items-center justify-center hover:text-red-600 transition-colors shadow-sm"><RotateCcw size={20}/></button>
                   </div>
                 </div>
                 <div className="max-h-48 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
